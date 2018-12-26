@@ -67,19 +67,20 @@ node ('master') {
                 // Run docker build on simulator and hardware both one at a
                 // time, to generate required artifacts and then perform lint
                 // checks
-                sh 'docker-compose -f docker-poet-build.yaml up'
-                sh 'docker-compose -f run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
-                sh 'docker-compose -f clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
-                sh 'docker-compose -f docker-poet-hw-build.yaml up'
-                sh 'docker-compose -f run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
-                sh 'docker-compose -f clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
+                sh 'docker-compose -f docker/compose/docker-poet-build.yaml up'
+                sh 'docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
+                sh 'docker-compose -f docker/compose/clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
+                sh 'docker-compose -f docker/compose/docker-poet-hw-build.yaml up'
+                sh 'docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
+                sh 'docker-compose -f docker/compose/clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
             }
 
             // Run the tests
             stage("Run Tests") {
                 sh './bin/run_docker_test tests/unit-poet.yaml'
                 sh './bin/run_docker_test tests/unit-ias-client.yaml'
-                // TODO: Enable this when IAS proxy is made use
+                sh './bin/run_docker_test tests/unit-common.yaml'
+                // Note: Enable this when IAS proxy is made use
                 // sh './bin/run_docker_test tests/unit-ias-proxy.yaml'
                 sh '''
                   docker rm -f \
@@ -94,8 +95,8 @@ node ('master') {
             }
 
             stage("Archive Build Artifacts") {
-                sh 'docker-compose -f copy-debs.yaml up'
-                sh 'docker-compose -f copy-debs.yaml down'
+                sh 'docker-compose -f docker/compose/copy-debs.yaml up'
+                sh 'docker-compose -f docker/compose/copy-debs.yaml down'
                 archiveArtifacts artifacts: '*_amd64.deb'
             }
         }

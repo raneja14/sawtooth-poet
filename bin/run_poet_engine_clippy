@@ -18,11 +18,12 @@
 top_dir=$(cd $(dirname $(dirname $0)) && pwd)
 
 dirs="
-    $top_dir/src/core
-    $top_dir/src/ias_client
-    $top_dir/src/ias_proxy
-    $top_dir/src/sgx/rust_sgxffi
-    $top_dir/src/validator-registry-tp
+    $top_dir/common
+    $top_dir/core
+    $top_dir/ias_client
+    $top_dir/ias_proxy
+    $top_dir/sgx/rust_sgxffi
+    $top_dir/validator-registry-tp
 "
 
 exitcode=0

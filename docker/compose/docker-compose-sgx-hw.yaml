@@ -26,7 +26,7 @@ services:
     image: sawtooth-poet-validator:latest
     build:
       context: .
-      dockerfile: docker/poet-validator.dockerfile
+      dockerfile: ../poet-validator.dockerfile
       args:
         - http_proxy
         - https_proxy
@@ -37,7 +37,7 @@ services:
       - 5050
     volumes:
       - poet-share:/poet_keys
-      - ./logs1/validator:/var/log/sawtooth
+      - ../../core/resources:/config
     # start the validator with an empty genesis batch
     working_dir: /root
     command: "bash -c \"\
@@ -53,6 +53,8 @@ services:
           -k /etc/sawtooth/keys/validator.priv \
           sawtooth.consensus.algorithm=poet2 \
           sawtooth.poet.block_claim_delay=0 \
+          sawtooth.poet.report_public_key_pem=\
+          \\\"$$(cat /config/ias_report_key.pem)\\\" \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch /poet_keys/poet-config.batch && \
@@ -69,21 +71,23 @@ services:
   poet-2-engine-1:
     build:
       context: .
-      dockerfile: core/Dockerfile
+      dockerfile: ../../core/Dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
     volumes:
-      - ./:/project/sawtooth-poet/
+      - ../../:/project/sawtooth-poet/
       - cargo-registry:/root/.cargo/registry
       - poet-share:/poet_keys
-      - ./logs1/poet:/var/log/sawtooth-poet
     working_dir: '/project/sawtooth-poet/core'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=${no_proxy},validator-1,rest-api-1'
+      - "SGX_HW_MODE=TRUE"
+    devices:
+      - "/dev/isgx:/dev/isgx"
     depends_on:
       - validator-1
       - validator-registry-tp-1
@@ -94,10 +98,10 @@ services:
         && mkdir -p /etc/sawtooth/keys/ \
         && cp /poet_keys/validator.* /etc/sawtooth/keys/ \
         && source /project/sawtooth-poet/build_sgx_binary.sh \
-        && RUST_BACKTRACE=1 cargo run --bin sawtooth-poet -- -C \
-        tcp://validator-1:5050 --config \
-        /project/sawtooth-poet/core/src/resources/poet_config.toml -v \
-        --genesis /poet_keys/poet-config.batch \""
+        && RUST_BACKTRACE=1 cargo run --bin sawtooth-poet -- \
+        -C tcp://validator-1:5050 \
+        --config /project/sawtooth-poet/core/resources/poet_config.toml \
+        -v --genesis /poet_keys/poet-config.batch \""
     stop_signal: SIGKILL
 
   rest-api-1:
@@ -134,19 +138,20 @@ services:
     image: sawtooth-poet-validator-registry-tp:latest
     build:
       context: ./
-      dockerfile: docker/rust-installed.dockerfile
+      dockerfile: ../rust-installed.dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
     volumes:
-      - ./validator-registry-tp:/project/validator-registry-tp/
+      - ../../validator-registry-tp:/project/validator-registry-tp/
       - cargo-registry-tp:/root/.cargo/registry
     working_dir: '/project/validator-registry-tp'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=${no_proxy},validator-1'
+      - 'SGX_HW_MODE=TRUE'
     depends_on:
       - validator-1
     entrypoint: "bash -c \"\

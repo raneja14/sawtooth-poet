@@ -13,20 +13,19 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-version: "3.6"
+version: '3.6'
 
 services:
-  unit-ias-proxy:
-    image: sawtooth-ias-proxy-local:$ISOLATION_ID
+
+  lint-rust:
     build:
-      context: ./
-      dockerfile: ../docker/rust-installed.dockerfile
+      context: .
+      dockerfile: ../lint.dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
+    image: lint:${ISOLATION_ID}
     volumes:
-      - ..:/project/
-    working_dir: '/project/ias_proxy'
-    command: cargo test
-    stop_signal: SIGKILL
+      - ../..:/project/sawtooth-poet
+    command: run_lint_rust

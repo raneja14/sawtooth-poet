@@ -18,30 +18,34 @@
 *.sublime*
 
 # Exclude poet2 build artifacts
-/src/build/
+/build/
 
-/src/core/target/
-/src/core/Cargo.lock
-/src/core/bin/
-/src/core/log/
+/core/target/
+/core/Cargo.lock
+/core/bin/
+/core/log/
 
-/src/validator-registry-tp/target/
-/src/validator-registry-tp/Cargo.lock
-/src/validator-registry-tp/bin/
+/validator-registry-tp/target/
+/validator-registry-tp/Cargo.lock
+/validator-registry-tp/bin/
 # Exclude validator_registry_tp_verifier.rs, custom build will take care of it
-/src/validator-registry-tp/src/validator_registry_tp_verifier.rs
+/validator-registry-tp/src/validator_registry_tp_verifier.rs
 
-/src/sgx/rust_sgxffi/src/bindings.rs
-/src/sgx/rust_sgxffi/Cargo.lock
-/src/sgx/rust_sgxffi/target/
+/sgx/rust_sgxffi/src/bindings.rs
+/sgx/rust_sgxffi/Cargo.lock
+/sgx/rust_sgxffi/target/
 
-/src/ias_client/target/
-/src/ias_client/Cargo.lock
-/src/ias_client/bin/
+/ias_client/target/
+/ias_client/Cargo.lock
+/ias_client/bin/
 
-/src/ias_proxy/target/
-/src/ias_proxy/Cargo.lock
-/src/ias_proxy/bin/
+/ias_proxy/target/
+/ias_proxy/Cargo.lock
+/ias_proxy/bin/
+
+/common/target/
+/common/Cargo.lock
+/common/bin/
 
 *.batch
 *.pdf

@@ -13,20 +13,19 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-version: "3.6"
+version: '3.6'
 
 services:
-  unit-ias-proxy:
-    image: sawtooth-ias-proxy-local:$ISOLATION_ID
+
+  poet-engine-clippy:
     build:
       context: ./
-      dockerfile: ../docker/rust-installed.dockerfile
+      dockerfile: ../clippy-poet.dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
+    image: poet-engine-clippy:${ISOLATION_ID}
     volumes:
-      - ..:/project/
-    working_dir: '/project/ias_proxy'
-    command: cargo test
-    stop_signal: SIGKILL
+      - ../../:/project/sawtooth-poet/
+    command: run_poet_engine_clippy

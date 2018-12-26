@@ -1,4 +1,4 @@
-# Copyright 2017 Intel Corporation
+# Copyright 2018 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ services:
     image: sawtooth-poet-engine-local:$ISOLATION_ID
     build:
       context: ./
-      dockerfile: ../poet-sgx-engine.dockerfile
+      dockerfile: ../core/Dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
     volumes:
       - ..:/project/sawtooth-poet/
-    working_dir: '/project/sawtooth-poet/src/core'
+    working_dir: '/project/sawtooth-poet/core'
     entrypoint: "bash -c \"\
         source /project/sawtooth-poet/build_sgx_binary.sh \
         && cargo test \""

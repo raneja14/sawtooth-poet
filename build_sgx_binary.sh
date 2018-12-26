@@ -1,5 +1,5 @@
 #!/bin/bash
-WORK_DIR=/project/sawtooth-poet/src
+WORK_DIR=/project/sawtooth-poet
 SGX_DIR=/tmp/sgxsdk
 
 #setting SGX environment

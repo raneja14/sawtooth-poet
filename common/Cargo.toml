@@ -13,20 +13,8 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-version: "3.6"
-
-services:
-  unit-ias-proxy:
-    image: sawtooth-ias-proxy-local:$ISOLATION_ID
-    build:
-      context: ./
-      dockerfile: ../docker/rust-installed.dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    volumes:
-      - ..:/project/
-    working_dir: '/project/ias_proxy'
-    command: cargo test
-    stop_signal: SIGKILL
+[package]
+name = "common"
+version = "1.0.0"
+authors = ["Intel Corporation"]
+description = "Common utility library"

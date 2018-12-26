@@ -16,8 +16,8 @@
 version: "3.6"
 
 services:
-  unit-ias-proxy:
-    image: sawtooth-ias-proxy-local:$ISOLATION_ID
+  unit-common:
+    image: sawtooth-poet-engine-common-local:$ISOLATION_ID
     build:
       context: ./
       dockerfile: ../docker/rust-installed.dockerfile
@@ -26,7 +26,8 @@ services:
         - https_proxy
         - no_proxy
     volumes:
-      - ..:/project/
-    working_dir: '/project/ias_proxy'
-    command: cargo test
+      - ..:/project/sawtooth-poet/
+    working_dir: '/project/sawtooth-poet/common'
+    entrypoint: cargo test
     stop_signal: SIGKILL
+

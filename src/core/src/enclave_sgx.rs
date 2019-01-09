@@ -419,7 +419,7 @@ fn check_verification_report(
         .expect("Error reading quote status as string");
     if enclave_quote_status.to_uppercase() != "OK" {
         // Allow out of date severity issues to pass.
-        if enclave_quote_status.to_uppercase() != "GROUP_OUT_OF_DATE" {
+        if enclave_quote_status.to_uppercase() == "GROUP_OUT_OF_DATE" {
             error!("Machine requires update (probably BIOS) for SGX compliance.");
         } else {
             error!("AVR enclave quote status is bad: {}", enclave_quote_status);

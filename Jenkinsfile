@@ -69,10 +69,10 @@ node ('master') {
                 // checks
                 sh 'docker-compose -f docker/compose/docker-poet-build.yaml up'
                 sh 'docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
-                sh 'docker-compose -f docker/compose/clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
+                sh 'docker-compose -f docker/compose/run-clippy.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
                 sh 'docker-compose -f docker/compose/docker-poet-hw-build.yaml up'
                 sh 'docker-compose -f docker/compose/run-lint.yaml up --abort-on-container-exit --exit-code-from lint-rust lint-rust'
-                sh 'docker-compose -f docker/compose/clippy-poet.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
+                sh 'docker-compose -f docker/compose/run-clippy.yaml up --abort-on-container-exit --exit-code-from poet-engine-clippy poet-engine-clippy'
             }
 
             // Run the tests

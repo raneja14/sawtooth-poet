@@ -23,14 +23,7 @@ volumes:
 services:
 
   validator-1:
-    image: sawtooth-poet-validator:latest
-    build:
-      context: .
-      dockerfile: ../poet-validator.dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: hyperledger/sawtooth-validator:nightly
     expose:
       - 4004
       - 8800
@@ -48,7 +41,8 @@ services:
           -o config-genesis.batch && \
         sawset proposal create \
           -k /etc/sawtooth/keys/validator.priv \
-          sawtooth.consensus.algorithm=poet2 \
+          sawtooth.consensus.algorithm.name=PoET \
+          sawtooth.consensus.algorithm.version=2.0 \
           sawtooth.poet.block_claim_delay=0 \
           -o config.batch && \
         cp /etc/sawtooth/keys/validator.priv /poet_keys/validator-1.priv && \
@@ -70,14 +64,7 @@ services:
     stop_signal: SIGKILL
 
   validator-2:
-    image: sawtooth-poet-validator:latest
-    build:
-      context: .
-      dockerfile: ../poet-validator.dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: hyperledger/sawtooth-validator:nightly
     expose:
       - 4004
       - 8800
@@ -106,14 +93,7 @@ services:
     stop_signal: SIGKILL
 
   validator-3:
-    image: sawtooth-poet-validator:latest
-    build:
-      context: .
-      dockerfile: ../poet-validator.dockerfile
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: hyperledger/sawtooth-validator:nightly
     expose:
       - 4004
       - 8800
@@ -301,7 +281,7 @@ services:
     image: sawtooth-poet-validator-registry-tp:latest
     build:
       context: ./
-      dockerfile: ../rust-installed.dockerfile
+      dockerfile: ../../validator-registry-tp/Dockerfile
       args:
         - http_proxy
         - https_proxy
@@ -327,7 +307,7 @@ services:
     image: sawtooth-poet-validator-registry-tp:latest
     build:
       context: ./
-      dockerfile: ../rust-installed.dockerfile
+      dockerfile: ../../validator-registry-tp/Dockerfile
       args:
         - http_proxy
         - https_proxy
@@ -353,7 +333,7 @@ services:
     image: sawtooth-poet-validator-registry-tp:latest
     build:
       context: ./
-      dockerfile: ../rust-installed.dockerfile
+      dockerfile: ../../validator-registry-tp/Dockerfile
       args:
         - http_proxy
         - https_proxy

@@ -38,7 +38,7 @@ services:
  validator-registry-tp:
      build:
        context: .
-       dockerfile: ../rust-installed.dockerfile
+       dockerfile: ../../validator-registry-tp/Dockerfile
        args:
          - http_proxy
          - https_proxy

@@ -92,7 +92,7 @@ where
             None =>
             /* unexpected */
             {
-                return None
+                return None;
             }
         };
         Option::from(to_return)

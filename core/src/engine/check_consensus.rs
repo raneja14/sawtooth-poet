@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Intel Corporation
+ * Copyright 2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,15 @@ extern crate log;
 extern crate log4rs;
 extern crate sawtooth_sdk;
 
+use engine::consensus_state::ConsensusState;
+use engine::consensus_state_store::ConsensusStateStore;
+use engine::wait_time_cache::WaitTimeCache;
 use poet2_util;
 use sawtooth_sdk::consensus::engine::*;
 use service::Poet2Service;
+use settings_view::Poet2SettingsView;
 use std::cmp;
 use validator_registry_view;
-
-const DEFAULT_BLOCK_CLAIM_LIMIT: i32 = 250;
 
 /*
 * Consensus related sanity checks to be done here
@@ -35,13 +37,19 @@ const DEFAULT_BLOCK_CLAIM_LIMIT: i32 = 250;
 *
 */
 
-pub fn check_consensus(block: &Block, service: &mut Poet2Service, validator_id: &str) -> bool {
+pub fn check_consensus(
+    block: &Block,
+    service: &mut Poet2Service,
+    validator_id: &str,
+    poet2_settings_view: &Poet2SettingsView,
+    consensus_state_store: &mut ConsensusStateStore,
+) -> bool {
     // 1. Validator registry check
     // 4. Match Local Mean against the locally computed
     // 5. Verfidy BlockDigest is a valid ECDSA of
     //    SHA256 hash of block using OPK
 
-    //\\ 2. Signature validation using sender's PPK
+    // Signature validation using sender's PPK
     let block_signer = poet2_util::to_hex_string(&block.signer_id.clone());
     let validator = validator_id;
     debug!(
@@ -66,23 +74,30 @@ pub fn check_consensus(block: &Block, service: &mut Poet2Service, validator_id: 
         return false;
     }
 
-    // 3. k-test
-    /*if validtor_has_claimed_block_limit( service ) {
-        return false;
-    }*/
+    // k-test
+    if validator_has_claimed_block_limit(
+        block,
+        service,
+        poet2_settings_view,
+        consensus_state_store,
+        &poet_pub_key,
+    ) {
+        // Initiate re-registration if this is for the host
+        // return is disabled until re-registration workflow implemented
+        // return false;
+    }
 
-    // 6. z-test
+    // z-test
     /*if validator_is_claiming_too_frequently {
         return false;
     }*/
 
-    // 7. c-test
-
+    // c-test
     if validator == block_signer && validator_is_claiming_too_early(block, service) {
         return false;
     }
 
-    //\\ 8. Compare CC & WC
+    // Compare CC & WC
     let chain_clock = service.get_chain_clock();
     let wall_clock = service.get_wall_clock();
     let wait_time: u64 = poet2_util::get_wait_time_from(&block);
@@ -110,28 +125,30 @@ fn verify_wait_certificate(
 }
 
 //k-test
-fn validtor_has_claimed_block_limit(service: &mut Poet2Service) -> bool {
-    let mut block_claim_limit = DEFAULT_BLOCK_CLAIM_LIMIT;
-    let key_block_claim_count = 9;
-    let poet_public_key = "abcd";
-    let validator_info_signup_info_poet_public_key = "abcd";
-    //  let mut key_block_claim_limit = poet_settings_view.key_block_claim_limit ;     //key
-    // need to use get_settings from service
-    let key_block_claim_limit =
-        service.get_setting_from_head("sawtooth.poet.key_block_claim_limit");
+fn validator_has_claimed_block_limit(
+    block: &Block,
+    service: &mut Poet2Service,
+    poet2_settings_view: &Poet2SettingsView,
+    consensus_state_store: &mut ConsensusStateStore,
+    block_poet_pub_key: &String,
+) -> bool {
+    let key_block_claim_limit = poet2_settings_view.key_block_claim_limit();
+    let validator_id = poet2_util::to_hex_string(&Vec::from(block.signer_id.clone()));
+    let consensus_state = ConsensusState::consensus_state_for_block(
+        block,
+        service,
+        consensus_state_store,
+        &mut WaitTimeCache::new(),
+    )
+    .expect("Failed to get consensus state");
+    let validator_state = consensus_state
+        .validators
+        .get(&validator_id)
+        .expect("Failed to get validator state");
+    let key_block_claim_count = validator_state.key_block_claim_count;
 
-    if key_block_claim_limit != "" {
-        block_claim_limit = key_block_claim_limit.parse::<i32>().unwrap();
-    }
-
-    // let mut validator_state = self.get_validator_state();//                          //stubbed
-    // if validator_state.poet_public_key == validator_info.signup_info.poet_public_key //stubbed
-
-    if poet_public_key == validator_info_signup_info_poet_public_key
-    //stubbed function replaced with dummy function
-    {
-        //if validator_state.key_block_claim_count >= block_claim_limit
-        if key_block_claim_count >= block_claim_limit {
+    if *block_poet_pub_key == validator_state.poet_public_key {
+        if key_block_claim_count >= key_block_claim_limit {
             true
         } else {
             false

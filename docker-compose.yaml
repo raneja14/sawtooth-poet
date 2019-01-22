@@ -46,7 +46,8 @@ services:
           -k /etc/sawtooth/keys/validator.priv \
           sawtooth.consensus.algorithm.name=PoET \
           sawtooth.consensus.algorithm.version=2.0 \
-          sawtooth.poet.block_claim_delay=0 \
+          sawtooth.consensus.poet2.block_claim_delay=0 \
+          sawtooth.consensus.poet2.key_block_claim_limit=65536 \
           -o config.batch && \
         sawadm genesis \
           config-genesis.batch config.batch /poet_keys/poet-config.batch && \

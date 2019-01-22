@@ -15,8 +15,9 @@
  * ------------------------------------------------------------------------------
  */
 use enclave_sgx::WaitCertificate;
-use engine::common::lru_cache::LruCache;
+use engine::consensus_state::ConsensusState;
 use engine::consensus_state_store::ConsensusStateStore;
+use engine::wait_time_cache::WaitTimeCache;
 use poet2_util;
 use sawtooth_sdk::consensus::engine::*;
 use service::Poet2Service;
@@ -35,7 +36,7 @@ pub struct ForkResolver {
     fork_len: u64,
     chain_len: u64,
     chain_cc: u64,
-    wait_time_cache: LruCache<BlockId, u64>,
+    wait_time_cache: WaitTimeCache,
 }
 
 impl ForkResolver {
@@ -47,9 +48,7 @@ impl ForkResolver {
             fork_len: 0_u64,
             chain_len: 0_u64,
             chain_cc: 0_u64,
-            wait_time_cache: LruCache::new(Some(1000)),
-            // Taking non default cache size as the default i.e - 100
-            // might not be good enough here
+            wait_time_cache: WaitTimeCache::new(),
         }
     }
 
@@ -79,7 +78,7 @@ impl ForkResolver {
             // Commiting or Resolving fork if one exists
             // Advance the chain if possible.
 
-            let new_block_dur = self.get_wait_time_from(&block);
+            let new_block_dur = self.wait_time_cache.get_wait_time_for(&block);
 
             let common_ancestor_ = self.get_common_ancestor(
                 service,
@@ -89,6 +88,7 @@ impl ForkResolver {
             );
             match common_ancestor_ {
                 Some(common_ancestor) => {
+                    fork_blocks_vec.push(common_ancestor.clone());
                     // Received block points to current head
                     // Go on to compare duration. Accept this block and
                     // discard candidate block or fail this block.
@@ -102,10 +102,15 @@ impl ForkResolver {
                                 "New block extends current chain. Committing {}",
                                 poet2_util::format_block(&block)
                             );
-                            let agg_chain_clock = service.get_chain_clock() + new_block_dur;
-                            state_store.add_to_state_store(&block, agg_chain_clock);
-                            service.set_chain_clock(agg_chain_clock);
-
+                            // add consensus state
+                            let consensus_state = ConsensusState::consensus_state_for_block(
+                                &block,
+                                service,
+                                state_store,
+                                &mut self.wait_time_cache,
+                            )
+                            .expect("This should never happen. Failed to get consensus state.");
+                            service.set_chain_clock(consensus_state.aggregate_chain_clock.clone());
                             fork_res_result = ForkResResult::CommitIncomingBlock;
                         } else {
                             info!(
@@ -153,19 +158,14 @@ impl ForkResolver {
                         }
                         if fork_won {
                             info!("Switching to fork.");
-                            // self.fork_cc is inclusive of new block
-                            let agg_chain_clock = cc_upto_ancestor + self.fork_cc;
-                            debug!(
-                                "Aggregate chain clock upto common ancestor = {}
-                                        Fork chain clock = {}. After switch aggregate = {}",
-                                cc_upto_ancestor, self.fork_cc, agg_chain_clock
-                            );
-                            self.add_states_for_new_fork(
+                            let consensus_state = ConsensusState::consensus_state_for_block(
+                                &block,
+                                service,
                                 state_store,
-                                &mut fork_blocks_vec,
-                                agg_chain_clock,
-                            );
-                            service.set_chain_clock(agg_chain_clock);
+                                &mut self.wait_time_cache,
+                            )
+                            .expect("This should never happen. Failed to get consensus state.");
+                            service.set_chain_clock(consensus_state.aggregate_chain_clock.clone());
 
                             fork_res_result = ForkResResult::CommitIncomingBlock;
                             // Mark all blocks upto common ancestor
@@ -197,14 +197,13 @@ impl ForkResolver {
         mut fork_block: Block,
         fork_block_vec: &mut Vec<Block>,
     ) -> Option<Block> {
-        self.fork_cc = self.get_wait_time_from(&fork_block);
+        self.fork_cc = self.wait_time_cache.get_wait_time_for(&fork_block);
         self.fork_len = 1;
         fork_block_vec.push(fork_block.clone());
         self.chain_len = 1;
-        self.chain_cc = self.get_wait_time_from(&chain_block);
+        self.chain_cc = self.wait_time_cache.get_wait_time_for(&chain_block);
         let ancestor_found: bool;
         info!("Looping over chain to find common ancestor.");
-
         if chain_block.block_num > fork_block.block_num {
             // Keep getting blocks from chain until same height
             // as the fork is reached.
@@ -213,7 +212,7 @@ impl ForkResolver {
                     Ok(ancestor) => {
                         chain_block = ancestor;
                         // Get wait_time for this block and add up to chain_cc
-                        self.chain_cc += self.get_wait_time_from(&chain_block);
+                        self.chain_cc += self.wait_time_cache.get_wait_time_for(&chain_block);
                         self.chain_len += 1;
                     }
                     Err(err) => {
@@ -230,7 +229,7 @@ impl ForkResolver {
                     Ok(ancestor) => {
                         fork_block = ancestor;
                         // Get wait_time for this block and add up to fork_cc
-                        self.fork_cc += self.get_wait_time_from(&fork_block);
+                        self.fork_cc += self.wait_time_cache.get_wait_time_for(&fork_block);
                         self.fork_len += 1;
                         fork_block_vec.push(fork_block.clone());
                     }
@@ -284,7 +283,7 @@ impl ForkResolver {
                     self.chain_len += 1;
                     // Keep adding wait times
                     // Get wait_time for this block and add up to chain_cc
-                    self.chain_cc += self.get_wait_time_from(&chain_block);
+                    self.chain_cc += self.wait_time_cache.get_wait_time_for(&chain_block);
 
                     match block_map.get(&prev_fork_block_id) {
                         Some(prev_fork_block) => {
@@ -300,7 +299,7 @@ impl ForkResolver {
                             }
                             // Keep adding wait times
                             // Get wait_time for this block and add up to fork_cc
-                            self.fork_cc += self.get_wait_time_from(&fork_block);
+                            self.fork_cc += self.wait_time_cache.get_wait_time_for(&fork_block);
                             self.fork_len += 1;
                             fork_block_vec.push(fork_block.clone());
                         }
@@ -325,42 +324,5 @@ impl ForkResolver {
         } else {
             None
         }
-    }
-
-    fn add_states_for_new_fork(
-        &mut self,
-        state_store: &mut ConsensusStateStore,
-        block_vec: &mut Vec<Block>,
-        agg_chain_clock_for_head: u64,
-    ) {
-        let mut agg_chain_clock = agg_chain_clock_for_head;
-        // block_vec would be having blocks in a sorted order
-        // of decreasing block numbers
-        for block in block_vec {
-            state_store.add_to_state_store(&block, agg_chain_clock);
-            agg_chain_clock -= self.get_wait_time_from(&block);
-        }
-    }
-
-    /// A wrapper method over get_wait_time_from() from util.
-    /// This would cache the wait times in a LRU Cache.
-    fn get_wait_time_from(&mut self, block: &Block) -> u64 {
-        let wait_time: u64;
-        // Introducing a flag to avoid borrowing mutably twice
-        let mut to_update = false;
-        match self.wait_time_cache.get(&block.block_id) {
-            Some(time) => {
-                wait_time = *time;
-            }
-            None => {
-                let time = poet2_util::get_wait_time_from(block);
-                wait_time = time;
-                to_update = true;
-            }
-        };
-        if to_update {
-            self.wait_time_cache.set(block.block_id.clone(), wait_time);
-        }
-        wait_time
     }
 }

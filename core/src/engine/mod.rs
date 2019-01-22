@@ -42,6 +42,7 @@ pub mod check_consensus;
 pub mod consensus_state;
 pub mod consensus_state_store;
 pub mod fork_resolver;
+pub mod wait_time_cache;
 
 use self::fork_resolver::{ForkResResult, ForkResolver};
 
@@ -175,7 +176,13 @@ impl Engine for Poet2Engine {
                                 poet2_util::to_hex_string(&block.block_id)
                             );
 
-                            if czk::check_consensus(&block, &mut service, validator_id.as_str()) {
+                            if czk::check_consensus(
+                                &block,
+                                &mut service,
+                                validator_id.as_str(),
+                                &poet2_settings_view,
+                                &mut state_store,
+                            ) {
                                 debug!(
                                     "Passed consensus check for block_id : {}",
                                     poet2_util::to_hex_string(&block.block_id)

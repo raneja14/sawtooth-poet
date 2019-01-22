@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Intel Corporation
+ * Copyright 2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,15 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * ------------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
-use enclave_sgx::WaitCertificate;
+use engine::consensus_state_store::ConsensusStateStore;
+use engine::wait_time_cache::WaitTimeCache;
+use poet2_util;
 use sawtooth_sdk::consensus::engine::*;
-use serde_json;
 use service::Poet2Service;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use validator_registry_tp::validator_registry_validator_info::ValidatorRegistryValidatorInfo;
+use validator_registry_view;
 
 /*
 *  The validator state represents the state for a single
@@ -34,9 +37,9 @@ use std::collections::VecDeque;
 */
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct ValidatorState {
-    key_block_claim_count: u64,
-    poet_public_key: String,
-    total_block_claim_count: u64,
+    pub key_block_claim_count: u64,
+    pub poet_public_key: String,
+    pub total_block_claim_count: u64,
 }
 
 /*
@@ -71,7 +74,7 @@ pub struct EstimateInfo {
     pub population_estimate: f64,
     // Needs to be of type BlockId but encapsulating structure is required to
     // to be serializeable & BlockId is not at the sdk
-    pub previous_block_id: String, //BlockId,
+    pub previous_block_id: String,
     pub validator_id: String,
 }
 
@@ -87,46 +90,10 @@ pub struct ConsensusState {
     pub population_samples: VecDeque<PopulationSample>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
-pub struct ValidatorInfo {
-    // Needs to be of type PeerId but encapsulating structure is required to
-    // to be serializeable & PeerId is not at the sdk
-    id: String, //PeerId,
-    poet_public_key: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
-pub struct PoetSettingsView {
-    population_estimate_sample_size: usize,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct BlockInfo {
-    wait_certificate: Option<WaitCertificate>,
-    validator_info: Option<ValidatorInfo>,
-    poet_settings_view: Option<PoetSettingsView>,
-}
-
-impl PartialEq for BlockInfo {
-    fn eq(&self, other: &BlockInfo) -> bool {
-        let self_ = self.clone();
-        let other_ = other.clone();
-
-        if (((self.wait_certificate.is_some() && other.wait_certificate.is_some())
-            && (self_.wait_certificate.unwrap() == other_.wait_certificate.unwrap()))
-            || (self.wait_certificate.is_none() && other.wait_certificate.is_none()))
-            && (((self.validator_info.is_some() && other.validator_info.is_some())
-                && (self_.validator_info.unwrap() == other_.validator_info.unwrap()))
-                || (self.validator_info.is_none() && other.validator_info.is_none()))
-            && (((self.poet_settings_view.is_some() && other.poet_settings_view.is_some())
-                && (self_.poet_settings_view.unwrap() == other_.poet_settings_view.unwrap()))
-                || (self.poet_settings_view.is_none() && other.poet_settings_view.is_none()))
-        {
-            true
-        } else {
-            false
-        }
-    }
+    wait_certificate: Option<String>,
+    validator_info: Option<ValidatorRegistryValidatorInfo>,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -136,106 +103,227 @@ struct Entry {
 }
 
 impl ConsensusState {
-    pub fn consensus_state_for_block_id(
-        &mut self,
-        block_id: BlockId,
-        svc: &mut Poet2Service,
+    pub fn consensus_state_for_block(
+        for_block: &Block,
+        poet2_service: &mut Poet2Service,
+        consensus_state_store: &mut ConsensusStateStore,
+        wait_time_cache: &mut WaitTimeCache,
     ) -> Option<ConsensusState> {
-        let mut previous_wait_certificate: Option<WaitCertificate> = None;
-        let mut consensus_state: Option<ConsensusState> = None;
         let mut blocks: Vec<Entry> = Vec::new();
-        let mut current_id = block_id;
+        let mut cur_block: Block = for_block.clone();
+        let mut cur_block_id = cur_block.block_id.clone();
+        let mut prev_wait_cert: Option<String> = None;
+        let mut consensus_state: Option<ConsensusState>;
+        let mut consensus_state_raw: ConsensusState;
+
         loop {
-            let block_ = svc.get_block(&current_id);
-            let block: Block;
-            if block_.is_ok() {
-                block = block_.unwrap();
-            } else {
+            // Get the consensus state from consensus state store
+            consensus_state = match consensus_state_store.get(&cur_block_id) {
+                Ok(result) => Some(*result),
+                Err(_) => {
+                    debug!("Failed to retrieve state from state store. Creating a new one for block_id: {}",
+                        poet2_util::to_hex_string(&cur_block_id));
+                    None
+                }
+            };
+
+            if consensus_state.is_some() {
+                debug!(
+                    "Found a consensus state entry for block_id: {}. Stopping and returning.",
+                    poet2_util::to_hex_string(&cur_block_id)
+                );
                 break;
             }
-            /*consensus_state = consensus_state_store.get(current_id.clone());
-            if consensus_state != None{
-              break
-            }*/
-            let payload_vec = block.payload;
-            let payload_str = String::from_utf8(payload_vec).expect("Found Invalid UTF-8");
-            let wait_certificate = Some(serde_json::from_str(&payload_str).unwrap());
-            if wait_certificate.is_some() {
-                //TODO
-            } else if blocks.is_empty() || previous_wait_certificate.is_some() {
+
+            let (cur_wait_cert, _cur_wait_cert_sign) = if cur_block.block_num == 0 {
+                (String::new(), String::new())
+            } else {
+                poet2_util::get_cert_and_sig_from(&cur_block)
+            };
+
+            if cur_wait_cert.is_empty() {
+                warn!("Wait certificate is empty"); // non-poet block
+                if blocks.is_empty() || prev_wait_cert.is_some() {
+                    blocks.push(Entry {
+                        key: cur_block_id.clone(),
+                        value: BlockInfo {
+                            wait_certificate: None,
+                            validator_info: None,
+                        },
+                    });
+                }
+            } else {
+                let cur_block_validator_id = poet2_util::to_hex_string(&cur_block.signer_id);
+                // Get validator info for validator_id at current block_id
+                let cur_validator_info =
+                    validator_registry_view::get_validator_info_for_validator_id(
+                        cur_block_validator_id.as_str(),
+                        &cur_block_id.to_owned(),
+                        poet2_service,
+                    );
+                if cur_validator_info.is_err() {
+                    debug!(
+                        "Cannot find registry entry for block_id: {}",
+                        poet2_util::to_hex_string(&cur_block_id)
+                    );
+                }
+                debug!(
+                    "Building consensus state for block_id: {}",
+                    poet2_util::to_hex_string(&cur_block_id)
+                );
+
                 blocks.push(Entry {
-                    key: current_id.clone(),
+                    key: cur_block_id.clone(),
                     value: BlockInfo {
-                        wait_certificate: None,
-                        validator_info: None,
-                        poet_settings_view: None,
+                        wait_certificate: Some(cur_wait_cert.clone()),
+                        validator_info: Some(cur_validator_info.unwrap().clone()),
                     },
                 });
             }
-            previous_wait_certificate = wait_certificate.clone();
-            current_id = block.previous_id;
-            //let mut consensus_state = consensus_state_store_.get(current_id.clone());
-            if consensus_state.is_none() {
-                consensus_state = Some(ConsensusState::default());
+
+            if cur_block.block_num == 0 {
+                debug!("Reached genesis! Breaking out of loop...");
+                break;
             }
-            for entry in blocks.iter().rev() {
-                let mut val = &entry.value;
-                if val.wait_certificate.is_none() {
-                    consensus_state = Some(ConsensusState::default());
+
+            prev_wait_cert = Some(cur_wait_cert.clone());
+
+            // Set cur_block id to cur_block's previous block id for next iteration
+            let prev_block_id = cur_block.previous_id.clone();
+
+            // Set cur_block
+            // Find the previous block in block cache
+
+            warn!("Finding block for current blocks previous block id");
+            // find from service
+            cur_block = poet2_service
+                .get_block(&prev_block_id)
+                .expect("Failed to get a block!");
+            cur_block_id = prev_block_id.clone();
+        }
+
+        if consensus_state.is_none() {
+            consensus_state = Some(ConsensusState::default());
+        }
+
+        debug!("Staring the updation of states");
+        for entry in blocks.iter().rev() {
+            let mut value = &entry.value;
+            let mut key: BlockId = entry.key.clone();
+            if value.wait_certificate.is_none() {
+                consensus_state = Some(ConsensusState::default());
+            } else {
+                // Update aggregate_chain_clock
+                // Find the correct block containing the key
+                cur_block = poet2_service
+                    .get_block(&key)
+                    .expect("Failed to get a block!");
+
+                let prev_block_id = cur_block.previous_id.clone();
+                let prev_consensus_state: Option<ConsensusState> =
+                    match consensus_state_store.get(&prev_block_id) {
+                        Ok(state) => Some(*state),
+                        Err(_) => {
+                            // This means this is either the first block
+                            // Or it was a non-poet block
+                            debug!(
+                                "Could not get state for block_id : {}",
+                                poet2_util::to_hex_string(&key)
+                            );
+                            None
+                        }
+                    };
+
+                let prev_aggregate_wait_time: u64 = if prev_consensus_state.is_some() {
+                    prev_consensus_state
+                        .clone()
+                        .unwrap()
+                        .aggregate_chain_clock
+                        .clone()
                 } else {
-                    self.validator_did_claim_block(
-                        &(val.clone().validator_info.unwrap()),
-                        &(val.clone().wait_certificate.unwrap()),
-                        &(val.clone().poet_settings_view.unwrap()),
-                    );
+                    0 // reset aggregate wait time if non-poet block found in between
+                };
+
+                let cur_wait_time = wait_time_cache.get_wait_time_for(&cur_block);
+                consensus_state_raw = consensus_state.unwrap();
+                consensus_state_raw.aggregate_chain_clock =
+                    prev_aggregate_wait_time + cur_wait_time;
+                consensus_state_raw.estimate_info = EstimateInfo {
+                    population_estimate: 0_f64,
+                    previous_block_id: poet2_util::to_hex_string(&Vec::from(
+                        cur_block.previous_id.clone(),
+                    )),
+                    validator_id: poet2_util::to_hex_string(&Vec::from(
+                        cur_block.signer_id.clone(),
+                    )),
+                };
+
+                // update k-counts
+                consensus_state_raw.validator_did_claim_block(
+                    &(value.clone().validator_info.unwrap()),
+                    &(value.clone().wait_certificate.unwrap()),
+                );
+                consensus_state = Some(consensus_state_raw.clone());
+                match consensus_state_store.put(&key.to_vec(), consensus_state_raw) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        panic!(
+                            "Could not persist state for block_id : {}. Error : {}",
+                            poet2_util::to_hex_string(&key),
+                            err
+                        );
+                    }
                 }
             }
         }
+
         consensus_state
     }
 
     pub fn validator_did_claim_block(
         &mut self,
-        validator_info: &ValidatorInfo,
-        wait_certificate: &WaitCertificate,
-        poet_settings_view: &PoetSettingsView,
+        _validator_info: &ValidatorRegistryValidatorInfo,
+        _wait_certificate: &String,
     ) -> () {
-        self.aggregate_local_mean += 5.5_f64; //wait_certificate.local_mean;
+        //self.aggregate_local_mean += 5.5_f64; //wait_certificate.local_mean;
         self.total_block_claim_count += 1;
-        self.population_samples.push_back(PopulationSample {
-            wait_time: wait_certificate.wait_time,
-            local_mean: 5.5_f64,
-        }); //wait_certificate.local_mean});
-        while self.population_samples.len() > poet_settings_view.population_estimate_sample_size {
-            self.population_samples.pop_front();
-        }
-        let validator_state = self.get_validator_state(validator_info.clone());
+        //self.population_samples.push_back(PopulationSample {
+        //    wait_time: wait_certificate.wait_time,
+        //    local_mean: 5.5_f64,
+        //}); //wait_certificate.local_mean});
+        //while self.population_samples.len() > poet_settings_view.population_estimate_sample_size {
+        //    self.population_samples.pop_front();
+        // }
+
+        // Get the current validator state
+        let validator_state = self.get_validator_state(_validator_info.clone());
         let total_block_claim_count = validator_state.total_block_claim_count + 1;
         let key_block_claim_count =
-            if validator_info.poet_public_key == validator_state.poet_public_key {
+            if _validator_info.signup_info.poet_public_key == validator_state.poet_public_key {
                 validator_state.key_block_claim_count + 1
             } else {
                 1
             };
-        let peerid_vec = Vec::from(validator_info.clone().id);
-        let peerid_str = String::from_utf8(peerid_vec).expect("Found Invalid UTF-8");
+        let peerid_str = _validator_info.clone().id;
         self.validators.insert(
             peerid_str,
             ValidatorState {
                 key_block_claim_count: key_block_claim_count,
-                poet_public_key: validator_info.clone().poet_public_key,
+                poet_public_key: _validator_info.signup_info.poet_public_key.clone(),
                 total_block_claim_count: total_block_claim_count,
             },
         );
     }
 
-    pub fn get_validator_state(&mut self, validator_info: ValidatorInfo) -> Box<ValidatorState> {
-        let peerid_vec = Vec::from(validator_info.clone().id);
-        let peerid_str = String::from_utf8(peerid_vec).expect("Found Invalid UTF-8");
+    pub fn get_validator_state(
+        &mut self,
+        validator_info: ValidatorRegistryValidatorInfo,
+    ) -> Box<ValidatorState> {
+        let peerid_str = validator_info.clone().id;
         let validator_state = self.validators.get(&peerid_str);
         let val_state = ValidatorState {
             key_block_claim_count: 0,
-            poet_public_key: validator_info.clone().poet_public_key,
+            poet_public_key: validator_info.signup_info.poet_public_key.clone(),
             total_block_claim_count: 0,
         };
         if validator_state.is_none() {

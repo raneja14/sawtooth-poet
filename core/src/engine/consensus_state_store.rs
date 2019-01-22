@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Intel Corporation
+ * Copyright 2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file expect in compliance with the License.
@@ -19,9 +19,8 @@ use bincode::{deserialize, serialize};
 use database::lmdb::LmdbDatabase;
 use database::DatabaseError;
 use engine::consensus_state::ConsensusState;
-use engine::consensus_state::*;
 use poet2_util;
-use sawtooth_sdk::consensus::engine::{Block, BlockId};
+use sawtooth_sdk::consensus::engine::BlockId;
 
 #[derive(Debug)]
 pub enum ConsensusStateStoreError {
@@ -94,32 +93,6 @@ impl<'a> ConsensusStateStore<'a> {
             poet2_util::to_hex_string(&block_id)
         );
         Ok(())
-    }
-
-    pub fn add_to_state_store(&mut self, block: &Block, agg_chain_clock: u64) -> () {
-        let mut state = ConsensusState::default();
-        state.aggregate_chain_clock = agg_chain_clock;
-        state.estimate_info = EstimateInfo {
-            population_estimate: 0_f64,
-            previous_block_id: poet2_util::to_hex_string(&Vec::from(block.previous_id.clone())),
-            validator_id: poet2_util::to_hex_string(&Vec::from(block.signer_id.clone())),
-        };
-        debug!(
-            "Storing cumulative cc = {} for blockId : {}",
-            agg_chain_clock,
-            poet2_util::to_hex_string(&block.block_id)
-        );
-
-        match self.put(&block.block_id, state) {
-            Ok(_) => {}
-            Err(err) => {
-                panic!(
-                    "Could not persist state for block_id : {}. Error : {}",
-                    poet2_util::to_hex_string(&block.block_id),
-                    err
-                );
-            }
-        }
     }
 
     pub fn delete_states_upto(&mut self, ancestor: BlockId, head: BlockId) -> () {

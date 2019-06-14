@@ -16,18 +16,21 @@
 
 # -------------=== poet engine build ===-------------
 
-FROM ubuntu:bionic
+FROM ubuntu:xenial
+
 
 RUN apt-get update \
  && apt-get install gnupg -y
 
-RUN echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
+RUN echo "deb http://repo.sawtooth.me/ubuntu/bumper/nightly xenial universe" > /etc/apt/sources.list.d/sawtooth-lake \
  && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy=http://proxy-chain.intel.com:911 --recv-keys 44FC67F19B2466EA \
- || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --keyserver-options http-proxy=http://proxy-chain.intel.com:911 --recv-keys 44FC67F19B2466EA) \
- && apt-get update \
- && apt-get install -y -q --allow-downgrades \
+ || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --keyserver-options http-proxy=http://proxy-chain.intel.com:911 --recv-keys 44FC67F19B2466EA)  \
+ && apt-get update
+
+RUN apt-get install -y -q \
+    git \
     python3 \
-    python3-setuptools
+    python3-stdeb
 
 RUN apt-get install -y -q --allow-downgrades \
     python3-cbor \
@@ -37,10 +40,18 @@ RUN apt-get install -y -q --allow-downgrades \
     python3-lmdb \
     python3-protobuf \
     python3-requests \
-    python3-sawtooth-sdk \
     python3-toml \
     python3-yaml
 
+RUN rm -rf /etc/apt/sources.list.d/sawtooth-lake
+
+RUN echo "deb http://repo.sawtooth.me/ubuntu/nightly xenial universe" > /etc/apt/sources.list.d/sawtooth-lake \
+ && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --keyserver-options http-proxy=http://proxy-chain.intel.com:911 --recv-keys 44FC67F19B2466EA \
+ || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --keyserver-options http-proxy=http://proxy-chain.intel.com:911 --recv-keys 44FC67F19B2466EA)  \
+ && apt-get update
+
+RUN apt-get install -y -q --allow-downgrades \
+    python3-sawtooth-sdk
 
 RUN mkdir -p /var/log/sawtooth
 RUN mkdir -p /etc/sawtooth-all
@@ -63,6 +74,5 @@ CMD echo "\033[0;32m--- Building poet cli ---\n\033[0m" \
 
 WORKDIR /project/sawtooth-poet
 
-COPY simulator/packaging/simulator_rk_pub.pem /etc/sawtooth
-
+COPY simulator/packaging/simulator_rk_pub.pem /etc/sawtooth 
 

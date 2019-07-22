@@ -80,8 +80,6 @@ services:
       - 'https_proxy=${https_proxy}'
       - 'no_proxy=${no_proxy},validator-1,rest-api-1'
       - "SGX_HW_MODE=TRUE"
-    devices:
-      - "/dev/isgx:/dev/isgx"
     depends_on:
       - validator-1
       - validator-registry-tp-1
@@ -94,7 +92,7 @@ services:
         && source /project/sawtooth-poet/build_sgx_binary.sh \
         && RUST_BACKTRACE=1 cargo run --bin sawtooth-poet -- \
         -C tcp://validator-1:5050 \
-        --config /project/sawtooth-poet/core/resources/poet_config.toml \
+        --config /project/sawtooth-poet/core/src/resources/poet_config.toml \
         -v --genesis /poet_keys/poet-config.batch \""
     stop_signal: SIGKILL
 

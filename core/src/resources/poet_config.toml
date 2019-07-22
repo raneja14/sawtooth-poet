@@ -74,3 +74,6 @@ validator_pub_key = '/etc/sawtooth/keys/validator.pub'
 # Note that the log filename would be poet-consensus.log( not configurable )
  
 log_dir = '/var/log/sawtooth-poet'
+
+
+lib_path = '../build/bin/libpoet_enclave_sim.signed.so'

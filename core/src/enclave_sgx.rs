@@ -118,11 +118,12 @@ impl EnclaveConfig {
         // Always fetch SPID from config file, dummy values are accepted when running in
         // simulator mode.
         let spid_str = config.get_spid();
+        let lib_file_path = config.get_lib_path();
 
         let mut lib_path = env::current_dir().unwrap();
-        lib_path.push("../build/bin/libpoet_enclave.signed.so");
+        lib_path.push(lib_file_path.as_str());
         if !Path::new(&lib_path).exists() {
-            lib_path = PathBuf::from("/usr/lib/libpoet_enclave.signed.so");
+            lib_path = PathBuf::from("/usr/lib/libpoet_enclave_sim.signed.so");
             if !Path::new(&lib_path).exists() {
                 panic!("There is missing libpoet_enclave.signed.so");
             }

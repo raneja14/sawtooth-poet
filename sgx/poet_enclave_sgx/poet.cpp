@@ -38,7 +38,7 @@ Poet::Poet(
     poet_err_t ret = POET_SUCCESS;
     try {
         MyLog(POET_LOG_INFO, "Initializing SGX Poet enclave\n");
-        
+        printf("ENclave PAth = %s\n",enclaveModulePath.c_str());        
         ret = Poet_Initialize(
             enclaveModulePath.c_str(),
             spid.c_str(),

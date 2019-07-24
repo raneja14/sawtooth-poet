@@ -1,4 +1,4 @@
-# Copyright 2018 Intel Corporation
+# Copyright 2017 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,28 +13,16 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-version: '3.6'
+[Unit]
+Description=Sawtooth PoET Validator Registry TP
+After=network.target
 
-volumes:
-  cargo-registry:
+[Service]
+User=sawtooth
+Group=sawtooth
+EnvironmentFile=-/etc/default/sawtooth-poet-validator-registry-tp
+ExecStart=/usr/bin/poet-validator-registry-tp $SAWTOOTH_POET_VALIDATOR_REGISTRY_TP_ARGS
+Restart=on-failure
 
-services:
-  poet-engine:
-    image: sawtooth-poet-engine:${ISOLATION_ID}
-    build:
-      context: .
-      dockerfile: core/Dockerfile-installed
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-
-  poet-validator-registry-tp:
-    image: sawtooth-poet-sawtooth_validator_registry:${ISOLATION_ID}
-    build:
-      context: .
-      dockerfile: sawtooth_validator_registry/Dockerfile-installed
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+[Install]
+WantedBy=multi-user.target

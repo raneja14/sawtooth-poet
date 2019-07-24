@@ -1,4 +1,6 @@
-# Copyright 2018 Intel Corporation
+#!/bin/bash
+
+# Copyright 2019 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,28 +15,15 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-version: '3.6'
+set -e
 
-volumes:
-  cargo-registry:
+user="sawtooth"
+group="sawtooth"
 
-services:
-  poet-engine:
-    image: sawtooth-poet-engine:${ISOLATION_ID}
-    build:
-      context: .
-      dockerfile: core/Dockerfile-installed
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+if ! getent group $group > /dev/null; then
+    addgroup --quiet --system $group
+fi
 
-  poet-validator-registry-tp:
-    image: sawtooth-poet-sawtooth_validator_registry:${ISOLATION_ID}
-    build:
-      context: .
-      dockerfile: sawtooth_validator_registry/Dockerfile-installed
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+if ! getent passwd $user > /dev/null; then
+    adduser --quiet --system --ingroup $group $user
+fi

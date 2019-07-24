@@ -129,18 +129,18 @@ services:
         \""
 
   validator-registry-tp-1:
-    image: sawtooth-poet-validator-registry-tp:latest
+    image: sawtooth-poet-sawtooth_validator_registry:latest
     build:
       context: ./
-      dockerfile: ../../validator-registry-tp/Dockerfile
+      dockerfile: ../../families/Dockerfile
       args:
         - http_proxy
         - https_proxy
         - no_proxy
     volumes:
-      - ../../validator-registry-tp:/project/validator-registry-tp/
+      - ../../families/sawtooth_validator_registry:/project/sawtooth_validator_registry/
       - cargo-registry-tp:/root/.cargo/registry
-    working_dir: '/project/validator-registry-tp'
+    working_dir: '/project/sawtooth_validator_registry'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
@@ -149,7 +149,7 @@ services:
     depends_on:
       - validator-1
     entrypoint: "bash -c \"\
-        RUST_BACKTRACE=1 cargo run --bin validator-registry-tp -- -vv -C \
+        RUST_BACKTRACE=1 cargo run --bin sawtooth_validator_registry -- -vv -C \
         tcp://validator-1:4004 && \
          tail -f /dev/null \
         \""

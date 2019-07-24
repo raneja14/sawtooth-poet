@@ -70,7 +70,7 @@ services:
     image: lint:${ISOLATION_ID}
     volumes:
       - ../..:/project/sawtooth-poet
-    working_dir: "/project/sawtooth-poet/validator-registry-tp"
+    working_dir: "/project/sawtooth-poet/sawtooth_validator_registry"
     command: cargo fmt
 
   fix-rustfmt-ias-client:

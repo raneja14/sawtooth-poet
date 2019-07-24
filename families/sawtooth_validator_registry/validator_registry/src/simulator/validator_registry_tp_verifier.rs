@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Intel Corporation
+ * Copyright 2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,14 +12,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * ------------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-extern crate sawtooth_sdk;
+use protos::validator_registry::ValidatorRegistryPayload;
+use sawtooth_sdk::processor::handler::{ApplyError, TransactionContext};
 
-pub mod validator_registry_payload;
-pub mod validator_registry_signup_info;
-pub mod validator_registry_validator_info;
+pub fn verify_signup_info(
+    context: &mut TransactionContext,
+    originator_public_key_hash: &str,
+    val_reg_payload: &ValidatorRegistryPayload,
+) -> Result<(), ApplyError> {
+    // In simulator mode, always return success.
+    Ok(())
+}

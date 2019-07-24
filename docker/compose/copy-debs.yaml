@@ -16,7 +16,7 @@ services:
       "
 
   poet-validator-registry-tp:
-    image: sawtooth-poet-validator-registry-tp:${ISOLATION_ID}
+    image: sawtooth-poet-sawtooth_validator_registry:${ISOLATION_ID}
     build:
       context: .
     volumes:

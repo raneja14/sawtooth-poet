@@ -53,7 +53,7 @@ services:
       "
 
   poet-validator-registry:
-    image: sawtooth-poet-validator-registry-tp:${ISOLATION_ID}
+    image: sawtooth-poet-sawtooth_validator_registry:${ISOLATION_ID}
     volumes:
       - ../build/debs:/build/debs
     command: |

@@ -25,11 +25,11 @@
 /core/bin/
 /core/log/
 
-/validator-registry-tp/target/
-/validator-registry-tp/Cargo.lock
-/validator-registry-tp/bin/
+/families/sawtooth_validator_registry/validator_registry/target/
+/families/sawtooth_validator_registry/validator_registry/Cargo.lock
+/families/sawtooth_validator_registry/validator_registry/bin/
 # Exclude validator_registry_tp_verifier.rs, custom build will take care of it
-/validator-registry-tp/src/validator_registry_tp_verifier.rs
+/families/sawtooth_validator_registry/validator_registry/src/validator_registry_tp_verifier.rs
 
 /sgx/rust_sgxffi/src/bindings.rs
 /sgx/rust_sgxffi/Cargo.lock

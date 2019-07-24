@@ -69,13 +69,20 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED ${PROJECT_EDGE_SOURCES} ${PROJECT_HEADERS} ${
 # LINK_DIRECTORIES as it will add the -rpath option to the linker and this is
 # bad as when installing the SDK the version of libsgx_uae_service.so in the SDK
 # lib64 directory is different than the one in /usr/lib
-MESSAGE("LIB UNTRUST 4= " ${SGX_LIBS_UNTRUSTED})
-FOREACH(lib ${SGX_LIBS_UNTRUSTED})
+
+# Find and link libs for simulator mode
+FOREACH(lib ${SGX_LIBS_UNTRUSTED_SIM})
     FIND_LIBRARY(ABS-${lib} NAMES ${lib} PATHS "$ENV{SGX_SDK}/lib64")
     SET(ABSOLUTE_SGX_LIBS_UNTRUSTED ${ABSOLUTE_SGX_LIBS_UNTRUSTED} ${ABS-${lib}})
 ENDFOREACH(lib)
 TARGET_LINK_LIBRARIES( ${PROJECT_NAME} PRIVATE ${ABSOLUTE_SGX_LIBS_UNTRUSTED})
 
+#Find and link libs for hardware mode.
+FOREACH(lib ${SGX_LIBS_UNTRUSTED_HW})
+    FIND_LIBRARY(ABS-${lib} NAMES ${lib} PATHS "$ENV{SGX_SDK}/lib64")
+    SET(ABSOLUTE_SGX_LIBS_UNTRUSTED ${ABSOLUTE_SGX_LIBS_UNTRUSTED} ${ABS-${lib}})
+ENDFOREACH(lib)
+TARGET_LINK_LIBRARIES( ${PROJECT_NAME} PRIVATE ${ABSOLUTE_SGX_LIBS_UNTRUSTED})
 
 #Linking Rust library to call rust functions from C++
 #GET_TARGET_PROPERTY(RUST_SGXFFI_DIR ${RUST_SGXFFI} LOCATION)

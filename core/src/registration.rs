@@ -31,9 +31,8 @@ use sawtooth_sdk::{
 };
 use serde_json;
 use std::{env, path::Path, str};
-use validator_registry_tp::{
-    validator_registry_payload::ValidatorRegistryPayload,
-    validator_registry_signup_info::ValidatorRegistrySignupInfo,
+use protos::validator_registry::{
+    ValidatorRegistryPayload, SignUpInfo,
 };
 
 const VALIDATOR_REGISTRY: &str = "validator_registry";
@@ -86,7 +85,11 @@ pub fn do_create_registration(
     info!("ID in transaction is {}", id.clone());
     let signup_info_str =
         serde_json::to_string(signup_info).expect("Error serializing signup info");
-    let raw_payload = ValidatorRegistryPayload::new(verb, name, id, signup_info_str);
+    let mut raw_payload = ValidatorRegistryPayload::new();
+    raw_payload.set_verb(verb);
+    raw_payload.set_name(name);
+    raw_payload.set_id(id);
+    raw_payload.set_signup_info(signup_info_str);
     let payload = serde_json::to_string(&raw_payload).expect("Error serializing payload to string");
 
     // Namespace for the TP

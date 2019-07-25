@@ -53,6 +53,7 @@ use std::path::Path;
 use std::process;
 use toml as toml_converter;
 
+mod protos;
 pub mod database;
 pub mod enclave_sgx;
 pub mod engine;

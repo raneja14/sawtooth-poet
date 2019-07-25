@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Intel Corporation
+ Copyright 2019 Intel Corporation
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -15,5 +15,15 @@
 ------------------------------------------------------------------------------
 */
 
+#[cfg(test)]
+extern crate rand;
+extern crate serde;
+extern crate bincode;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate serde_big_array;
+
 pub mod lru_cache;
 pub mod utils;
+pub mod sgx_structs;

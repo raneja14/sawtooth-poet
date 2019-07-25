@@ -1,4 +1,4 @@
-# Copyright 2018 Intel Corporation
+# Copyright 2019 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,4 +17,11 @@
 name = "common"
 version = "1.0.0"
 authors = ["Intel Corporation"]
-description = "Common utility library"
+description = "PoET Common utility library"
+
+[dependencies]
+rand = "0.7.0"
+serde = "^1.0"
+bincode = "1.1.4"
+serde-big-array = "0.1.5"
+serde_derive = "^1.0"

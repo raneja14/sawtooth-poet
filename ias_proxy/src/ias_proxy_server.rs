@@ -86,8 +86,9 @@ impl IasProxyServer {
             // Construct new IasClient with input config parameters
             ias_client: Box::new(IasClient::new(
                 config.get_ias_url(),
-                read_binary_file(config.get_spid_cert_file().as_str()),
-                config.get_password(),
+                config.get_ias_subscription_key(),
+               // read_binary_file(config.get_spid_cert_file().as_str()),
+               // config.get_password(),
                 None,
             )),
         }

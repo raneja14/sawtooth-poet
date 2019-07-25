@@ -31,10 +31,12 @@ pub struct PoetConfig {
     log_dir: String,
     lib_enclave_path: String,
     lib_poet_bridge_path: String,
+    ias_subscription_key: String,
+    is_simulator_mode: bool,
 }
 
 impl PoetConfig {
-    /// Getters fot the members
+    /// Getters fot the members 
     pub fn get_spid(&self) -> String {
         self.spid.clone()
     }
@@ -95,5 +97,12 @@ impl PoetConfig {
         self.lib_poet_bridge_path.clone()
     }
 
+    pub fn get_ias_subscription_key(&self) -> String {
+        self.ias_subscription_key.clone()
+    }
+
+   pub fn is_simulator_mode(&self) -> bool {
+        self.is_simulator_mode
+    }
 
 }

@@ -27,6 +27,10 @@ use std::{collections::HashMap, str, time::Duration};
 pub struct IasClient {
     // IAS URL to connect to
     ias_url: String,
+
+    // Subscription Key
+    ias_subscription_key: String,
+
     // Root cert to be trusted
     spid_cert: Vec<u8>,
     // Password for PKCS12 format file
@@ -35,8 +39,8 @@ pub struct IasClient {
     timeout: Duration,
 }
 
-const SIGRL_LINK: &str = "/attestation/sgx/v2/sigrl";
-const AVR_LINK: &str = "/attestation/sgx/v2/report";
+const SIGRL_LINK: &str = "/attestation/v3/sigrl";
+const AVR_LINK: &str = "/attestation/v3/report";
 const EMPTY_STR: &str = "";
 // Note: Structure can be used for serialization and deserialization, but it won't skip null values
 const ISV_ENCLAVE_QUOTE: &str = "isvEnclaveQuote";
@@ -52,6 +56,7 @@ impl IasClient {
     pub fn default() -> Self {
         IasClient {
             ias_url: String::new(),
+            ias_subscription_key: String::new(),
             spid_cert: vec![],
             password: EMPTY_STR.to_string(),
             timeout: Duration::new(DEFAULT_TIMEOUT_SECS, DEFAULT_TIMEOUT_NANO_SECS),
@@ -59,11 +64,12 @@ impl IasClient {
     }
 
     /// constructor for IasClient
-    pub fn new(url: String, cert: Vec<u8>, passwd: String, time: Option<u64>) -> Self {
+    pub fn new(url: String,key: String, time: Option<u64>) -> Self {
         IasClient {
             ias_url: url,
-            spid_cert: cert,
-            password: passwd,
+            ias_subscription_key: key,
+            //spid_cert: cert,
+            //password: passwd,
             timeout: Duration::new(
                 time.unwrap_or(DEFAULT_TIMEOUT_SECS),
                 DEFAULT_TIMEOUT_NANO_SECS,
@@ -76,6 +82,10 @@ impl IasClient {
         self.ias_url = url;
     }
 
+    pub fn set_ias_subscription_key(&mut self, key: String) {
+        self.ias_subscription_key = key;
+    }
+    
     pub fn set_spid_cert(&mut self, cert: Vec<u8>) {
         self.spid_cert = cert;
     }
@@ -100,6 +110,7 @@ impl IasClient {
         gid: Option<&str>,
         api_path: Option<&str>,
     ) -> Result<ClientResponse, ClientError> {
+         info!("REVOCATION");
         // Path to get SigRL from
         let mut final_path = String::new();
         final_path.push_str(self.ias_url.as_str());
@@ -117,10 +128,12 @@ impl IasClient {
             }
             _ => "",
         };
+        info!("received_gid= {:?}", received_gid);
         final_path.push_str(received_gid);
         let url = final_path
             .parse::<Uri>()
             .expect("Error constructing URI from string");
+        info!("Fetching SigRL from:= {:?}", url);
         debug!("Fetching SigRL from: {}", url);
 
         // Send request to get SigRL

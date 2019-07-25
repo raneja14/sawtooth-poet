@@ -131,12 +131,10 @@ impl EnclaveConfig {
             basename: ptr::null_mut(),
             epid_group: ptr::null_mut(),
         };
-
-        // Always fetch SPID from config file, dummy values are accepted when running in
+       // Always fetch SPID from config file, dummy values are accepted when running in
         // simulator mode.
         let spid_str = config.get_spid();
         let lib_file_path = config.get_lib_enclave_path();
-
         let mut lib_path = env::current_dir().unwrap();
         lib_path.push(lib_file_path.as_str());
         if !Path::new(&lib_path).exists() {
@@ -161,11 +159,14 @@ impl EnclaveConfig {
     /// Initialization if running on SGX hardware. Fill up IAS client object parameters from
     /// config file.
     pub fn initialize_remote_attestation(&mut self, config: &PoetConfig) {
-        if !self.check_if_sgx_simulator() {
+        if !config.is_simulator_mode(){
+            info!("REMOTE ATTESTATION");
             self.ias_client.set_ias_url(config.get_ias_url());
-            self.ias_client
-                .set_spid_cert(read_binary_file(config.get_spid_cert_file().as_str()));
-            self.ias_client.set_password(config.get_password());
+            self.ias_client.set_ias_subscription_key(config.get_ias_subscription_key());
+            
+           // self.ias_client
+             //   .set_spid_cert(read_binary_file(config.get_spid_cert_file().as_str()));
+            //self.ias_client.set_password(config.get_password());
             self.update_sig_rl();
         }
     }
@@ -176,7 +177,9 @@ impl EnclaveConfig {
         config: &PoetConfig,
     ) -> ValidatorRegistrySignupInfo {
         // Update SigRL before getting quote
-        self.update_sig_rl();
+        if !config.is_simulator_mode(){
+            self.update_sig_rl();
+        }
         let mut eid: r_sgx_enclave_id_t = self.enclave_id;
         let mut signup: r_sgx_signup_info_t = self.signup_info;
         info!("creating signup_info");
@@ -196,7 +199,7 @@ impl EnclaveConfig {
         // to be replaced by anti_sybil_id from AVR. Waiting for mock client for simulator be
         // ready.
         let mut epid_pseudonym = poet_public_key.clone();
-        if !self.check_if_sgx_simulator() {
+        if !config.is_simulator_mode() {
             let raw_response = self
                 .ias_client
                 .post_verify_attestation(quote.as_ref(), None, Option::from(nonce))
@@ -367,19 +370,17 @@ impl EnclaveConfig {
     /// Method to update signature revocation list received from IAS. Pass it to enclave. Note
     /// that this method is applicable only when PoET is run in SGX hardware mode.
     pub fn update_sig_rl(&mut self) {
-        if !self.check_if_sgx_simulator() {
-            let epid_group = unsafe {
-                ffi::create_string_from_char_ptr(self.enclave_id.epid_group as *mut c_char)
-            };
-            let sig_rl_response = self
-                .ias_client
-                .get_signature_revocation_list(Option::from(epid_group.as_str()), None)
-                .expect("Error fetching SigRL");
-            let sig_rl_string = read_body_as_string(sig_rl_response.body)
-                .expect("Error reading SigRL response as string");
-            debug!("Received SigRl of {} length", sig_rl_string.len());
-            self.set_sig_revocation_list(&sig_rl_string)
-        }
+        let epid_group = unsafe {
+            ffi::create_string_from_char_ptr(self.enclave_id.epid_group as *mut c_char)
+        };
+        let sig_rl_response = self
+            .ias_client
+            .get_signature_revocation_list(Option::from(epid_group.as_str()), None)
+            .expect("Error fetching SigRL");
+        let sig_rl_string = read_body_as_string(sig_rl_response.body)
+            .expect("Error reading SigRL response as string");
+        debug!("Received SigRl of {} length", sig_rl_string.len());
+        self.set_sig_revocation_list(&sig_rl_string)
     }
 }
 

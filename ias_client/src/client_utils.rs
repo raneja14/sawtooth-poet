@@ -101,6 +101,31 @@ pub fn get_client(
     Ok(Client::builder().build::<_, Body>(proxy_connector))
 }
 
+pub fn get_http_client()
+  -> Result<Client<ProxyConnector<HttpConnector>, Body>, ClientError> {
+    let mut http = HttpConnector::new(1);
+    // do not enforce http only URI
+    http.enforce_http(false);
+    let mut proxy_connector =
+        ProxyConnector::new(http.clone()).expect("Error constructing client");
+    // Read proxy environment variable
+    let http_proxy = env::var("http_proxy");
+    if http_proxy.is_ok() {
+        let read_proxy = http_proxy
+            .unwrap()
+            .parse::<Uri>()
+            .expect("Error reading proxy environment");
+        let proxy = Proxy::new(Intercept::All, read_proxy);
+        // build a client to allow both http and https URI formats
+        proxy_connector = match ProxyConnector::from_proxy(http, proxy) {
+            Ok(success) => success,
+            Err(error) => panic!("{}", error),
+        };
+        debug!("Using proxy");
+    }
+    Ok(Client::builder().build::<_, Body>(proxy_connector))
+}
+
 /// Function to read ```hyper::client::ResponseFuture``` (return values of .request(), .get(), .post()
 /// etc functions from hyper library).
 ///
@@ -114,7 +139,7 @@ pub fn read_response_future(response_fut: ResponseFuture) -> Result<ClientRespon
         .then(move |response_obj| {
             match response_obj {
                 Ok(response) => {
-                    debug!("Received response result code: {}", response.status());
+                    info!("Received response result code: {}", response.status());
                     if response.status() >= StatusCode::BAD_REQUEST {
                         error!("Response status is not successful: {}", response.status());
                         return Err(ClientError);

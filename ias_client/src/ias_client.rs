@@ -17,7 +17,7 @@
 
 extern crate serde;
 
-use client_utils::{get_client, read_response_future, ClientError, ClientResponse};
+use client_utils::{get_http_client, read_response_future, ClientError, ClientResponse};
 use hyper::{header, header::HeaderValue, Body, Method, Request, Uri};
 use serde_json;
 use std::{collections::HashMap, str, time::Duration};
@@ -68,12 +68,12 @@ impl IasClient {
         IasClient {
             ias_url: url,
             ias_subscription_key: key,
-            //spid_cert: cert,
-            //password: passwd,
+            spid_cert: vec![],
+            password: EMPTY_STR.to_string(),
             timeout: Duration::new(
                 time.unwrap_or(DEFAULT_TIMEOUT_SECS),
                 DEFAULT_TIMEOUT_NANO_SECS,
-            ),
+            ),  
         }
     }
 
@@ -135,12 +135,18 @@ impl IasClient {
             .expect("Error constructing URI from string");
         info!("Fetching SigRL from:= {:?}", url);
         debug!("Fetching SigRL from: {}", url);
-
+        
+        let req = Request::builder()
+        .method("GET")
+        .uri(url.clone())
+        .header("Ocp-Apim-Subscription-Key", self.ias_subscription_key.clone())
+        .body(Body::from(""))
+        .unwrap();
         // Send request to get SigRL
-        let client = get_client(&self.spid_cert, self.password.as_str())
+        let client = get_http_client()
             .expect("Error creating http/s client");
         // TODO: Add logic for request timeout
-        let response_fut = client.get(url);
+        let response_fut = client.request(req);
         read_response_future(response_fut)
     }
 
@@ -158,6 +164,8 @@ impl IasClient {
         manifest: Option<&str>,
         nonce: Option<&str>,
     ) -> Result<ClientResponse, ClientError> {
+
+        info!("POST VERIFY ATTESTATION=");
         // REST API to connect to for getting AVR
         let mut final_path = String::new();
         final_path.push_str(self.ias_url.as_str());
@@ -188,19 +196,26 @@ impl IasClient {
             request_aep.insert(String::from(NONCE), nonce.unwrap().to_string());
         }
         // Construct hyper's request to be sent
-        let mut req = Request::new(Body::from(
-            serde_json::to_string(&request_aep).expect("Error occurred during AEP serialization"),
-        ));
-        *req.method_mut() = Method::POST;
-        *req.uri_mut() = url.clone();
-        req.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
+        // let mut req = Request::new(Body::from(
+        //     serde_json::to_string(&request_aep).expect("Error occurred during AEP serialization"),
+        // ));
+        // *req.method_mut() = Method::POST;
+        // *req.uri_mut() = url.clone();
+        // req.headers_mut().insert(
+        //     header::CONTENT_TYPE,
+        //     HeaderValue::from_static("application/json"),
+        // );
+        
         debug!("Posting attestation evidence payload: {:#?}", request_aep);
 
+        let req = Request::builder()
+        .method("POST")
+        .uri(url.clone())
+        .header("Ocp-Apim-Subscription-Key", self.ias_subscription_key.clone())
+        .body(Body::from(serde_json::to_string(&request_aep).expect("Error occurred during AEP serialization")))
+        .unwrap();
         // Send request to get AVR
-        let client = get_client(&self.spid_cert, self.password.as_str())
+        let client = get_http_client()
             .expect("Error creating http client");
         let response_fut = client.request(req);
         // TODO: Add logic for request timeout

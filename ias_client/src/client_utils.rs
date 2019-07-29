@@ -144,6 +144,7 @@ pub fn read_response_future(response_fut: ResponseFuture) -> Result<ClientRespon
                         error!("Response status is not successful: {}", response.status());
                         return Err(ClientError);
                     }
+                    info!(" OK RESPONSE ");
                     // Borrow response headers, to be passed in ClientResponse
                     let header_map = response.headers().to_owned();
                     let body = response.into_body();

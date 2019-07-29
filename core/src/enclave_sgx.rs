@@ -176,10 +176,10 @@ impl EnclaveConfig {
         pub_key_hash: &str,
         config: &PoetConfig,
     ) -> ValidatorRegistrySignupInfo {
-        // Update SigRL before getting quote
-        if !config.is_simulator_mode(){
-            self.update_sig_rl();
-        }
+        // Update SigRL before getting quote  -> Already updated during remote attestation
+        // if !config.is_simulator_mode(){
+        //     self.update_sig_rl();
+        // }
         let mut eid: r_sgx_enclave_id_t = self.enclave_id;
         let mut signup: r_sgx_signup_info_t = self.signup_info;
         info!("creating signup_info");
@@ -380,6 +380,7 @@ impl EnclaveConfig {
         let sig_rl_string = read_body_as_string(sig_rl_response.body)
             .expect("Error reading SigRL response as string");
         debug!("Received SigRl of {} length", sig_rl_string.len());
+        info!("Received SigRl of {} length", sig_rl_string.len());
         self.set_sig_revocation_list(&sig_rl_string)
     }
 }

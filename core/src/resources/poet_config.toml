@@ -22,6 +22,7 @@
 
 spid = 'DEADBEEF00000000DEADBEEF00000000'
 
+
 # ias_url is the URL of the Intel Attestation Service (IAS) server.  The
 # example server is for debug enclaves only
 
@@ -39,7 +40,6 @@ spid_cert_file = '/project/sawtooth-poet/client.pfx'
 ias_subscription_key = 'ffffffff'
 
 # password to read the DER-encoded certificate file
-
 password = ''
 
 # rest_api is endpoint where REST API of validator is available, this is
@@ -82,9 +82,9 @@ validator_pub_key = '/etc/sawtooth/keys/validator.pub'
 log_dir = '/var/log/sawtooth-poet'
 
 
-lib_enclave_path = '../build/bin/libpoet_enclave_sim.signed.so'
+lib_enclave_path = '../build/bin/libpoet_enclave_hw.signed.so'
 
-lib_poet_bridge_path = '../build/bin/libpoet_bridge_sim.so'
+lib_poet_bridge_path = '../build/bin/libpoet_bridge_hw.so'
 
-is_simulator_mode = true
+is_simulator_mode = false
 

@@ -42,6 +42,7 @@ pub struct IasClient {
 const SIGRL_LINK: &str = "/attestation/v3/sigrl";
 const AVR_LINK: &str = "/attestation/v3/report";
 const EMPTY_STR: &str = "";
+const REQUEST_HEADER_KEY: &str = "Ocp-Apim-Subscription-Key";
 // Note: Structure can be used for serialization and deserialization, but it won't skip null values
 const ISV_ENCLAVE_QUOTE: &str = "isvEnclaveQuote";
 const PSE_MANIFEST: &str = "pseManifest";
@@ -129,6 +130,8 @@ impl IasClient {
             _ => "",
         };
         info!("received_gid= {:?}", received_gid);
+       // received_gid = "00000AFB";
+        info!("received_gid Modified= {:?}", received_gid);
         final_path.push_str(received_gid);
         let url = final_path
             .parse::<Uri>()
@@ -139,7 +142,7 @@ impl IasClient {
         let req = Request::builder()
         .method("GET")
         .uri(url.clone())
-        .header("Ocp-Apim-Subscription-Key", self.ias_subscription_key.clone())
+        .header(REQUEST_HEADER_KEY, self.ias_subscription_key.clone())
         .body(Body::from(""))
         .unwrap();
         // Send request to get SigRL
@@ -211,7 +214,7 @@ impl IasClient {
         let req = Request::builder()
         .method("POST")
         .uri(url.clone())
-        .header("Ocp-Apim-Subscription-Key", self.ias_subscription_key.clone())
+        .header(REQUEST_HEADER_KEY, self.ias_subscription_key.clone())
         .body(Body::from(serde_json::to_string(&request_aep).expect("Error occurred during AEP serialization")))
         .unwrap();
         // Send request to get AVR

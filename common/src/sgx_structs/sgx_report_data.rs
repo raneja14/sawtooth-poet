@@ -18,8 +18,8 @@
 use sgx_structs::{SgxStruct, sgx_struct_error::SgxStructError,
                   sgx_struct_serde::{serialize_to_bytes, parse_from_bytes, SgxSerdeEndian}};
 
-const STRUCT_SIZE: usize = 64;
-const DEFAULT_VALUE: u8 = 0;
+pub const STRUCT_SIZE: usize = 64;
+pub const DEFAULT_VALUE: u8 = 0;
 const ENDIANNESS: SgxSerdeEndian = SgxSerdeEndian::LittleEndian;
 
 big_array!{ BigArray; }
@@ -38,7 +38,7 @@ big_array!{ BigArray; }
 #[derive(Serialize, Deserialize)]
 pub struct SgxReportData {
     #[serde(with = "BigArray")]
-    d: [u8; STRUCT_SIZE],
+    pub d: [u8; STRUCT_SIZE],
 }
 
 impl SgxStruct for SgxReportData {

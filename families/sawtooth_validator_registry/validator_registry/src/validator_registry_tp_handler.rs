@@ -15,8 +15,6 @@
  * -----------------------------------------------------------------------------
  */
 
-extern crate base64;
-
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use sawtooth_sdk::messages::processor::TpProcessRequest;

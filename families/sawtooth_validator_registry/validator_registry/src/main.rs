@@ -25,6 +25,8 @@ extern crate protobuf;
 extern crate sawtooth_sdk;
 extern crate serde;
 extern crate serde_json;
+extern crate common;
+extern crate base64;
 
 use log::LogLevelFilter;
 use log4rs::append::console::ConsoleAppender;

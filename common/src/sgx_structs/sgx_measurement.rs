@@ -35,7 +35,7 @@ const ENDIANNESS: SgxSerdeEndian = SgxSerdeEndian::LittleEndian;
 ///     intel_sgx_sdk_developer_reference_for_linux_os_pdf.pdf
 #[derive(Serialize, Deserialize)]
 pub struct SgxMeasurement {
-    m: [u8; STRUCT_SIZE],
+    pub m: [u8; STRUCT_SIZE],
 }
 
 impl SgxStruct for SgxMeasurement {

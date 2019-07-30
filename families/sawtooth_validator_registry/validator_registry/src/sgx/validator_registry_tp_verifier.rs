@@ -17,7 +17,7 @@
 
 extern crate openssl;
 
-use std::iter::repeat;
+use std::{iter::repeat, str};
 use self::openssl::{
     hash::MessageDigest,
     pkey::{PKey, Public},
@@ -25,18 +25,22 @@ use self::openssl::{
     sign::Verifier,
 };
 use crypto::{digest::Digest, sha2::Sha256};
+use common::sgx_structs::{SgxStruct, sgx_quote::SgxQuote};
 use protos::validator_registry::{SignUpInfo, SignUpInfoProof, ValidatorRegistryPayload};
 use sawtooth_sdk::{
     messages::setting::Setting,
     processor::handler::{ApplyError, TransactionContext},
 };
 use validator_registry_tp_handler::{get_state, parse_from};
+use base64;
 
 const SETTING_ADDRESS_PART_SIZE: usize = 16;
 const SETTING_NAMESPACE: &str = "000000";
 const SETTING_MAX_KEY_PARTS: usize = 4;
 
 const SAWTOOTH_POET_REPORT_PUBLIC_KEY_STR: &str = "sawtooth.poet.report_public_key_pem";
+const SAWTOOTH_POET_VALID_ENCLAVE_MEASUREMENTS: &str = "sawtooth.poet.valid_enclave_measurements";
+const SAWTOOTH_POET_VALID_ENCLAVE_BASENAMES: &str = "sawtooth.poet.valid_enclave_basenames";
 
 pub fn verify_signup_info(
     context: &mut TransactionContext,
@@ -79,18 +83,6 @@ pub fn verify_signup_info(
             ),
         ),
     };
-
-    // TODO: Need below 2 parameters for quote verification
-    /*
-    let valid_measurements = self._get_config_setting(
-        context,
-        &"sawtooth.poet.valid_enclave_measurements".to_string())
-        .expect("Error reading config setting: Enclave measurements");
-    let valid_basenames = self._get_config_setting(
-        context,
-        &"sawtooth.poet.valid_enclave_basenames".to_string())
-        .expect("Error reading config setting: Enclave basename");
-    */
 
     let decoded_sig = match base64::decode(signature) {
         Ok(sig) => sig,
@@ -198,8 +190,8 @@ pub fn verify_signup_info(
         ));
     }
 
-    // The ISV enclave quote body is base 64 encoded
-    let _enclave_quote =
+    // The ISV enclave quote body is base 64 encoded, decode it
+    let enclave_quote_base64 =
         match verification_report_dict
             .get("isvEnclaveQuoteBody") {
             Some(quote) => quote,
@@ -209,6 +201,30 @@ pub fn verify_signup_info(
                 ),
             ),
         };
+    let enclave_quote_base64_tmp = match enclave_quote_base64.as_str() {
+        Some(value) => value,
+        None => return Err(
+                ApplyError::InvalidTransaction(
+                    format!("Error converting enclaveQuoteBody as string reference"),
+                ),
+            ),
+    };
+    let enclave_quote = match base64::decode(enclave_quote_base64_tmp.as_bytes()) {
+        Ok(quote) => quote,
+        Err(_) => return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error base64 decoding enclave quote"),
+            ),
+        ),
+    };
+    let mut sgx_quote = SgxQuote::default();
+    if sgx_quote.parse_from_bytes(&enclave_quote).is_err() {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error constructing the enclaveQuote structure"),
+            ),
+        );
+    }
 
     // The report body should be SHA256(SHA256(OPK)|PPK)
     let hash_input = format!(
@@ -216,8 +232,106 @@ pub fn verify_signup_info(
         originator_public_key_hash.to_uppercase(),
         signup_info.poet_public_key.to_uppercase()
     );
-    let _hash_value = sha256(hash_input.as_bytes());
-    // TODO: Quote verification
+    let hash_value = sha256(hash_input.as_bytes());
+    let mut expected_report_data = Vec::new();
+    let length = common::sgx_structs::sgx_report_data::STRUCT_SIZE - hash_value.len();
+    let mut filler = vec![common::sgx_structs::sgx_report_data::DEFAULT_VALUE; length];
+    expected_report_data.append(&mut hash_value.to_vec());
+    expected_report_data.append(&mut filler);
+
+    if &expected_report_data[..] == &sgx_quote.report_body.report_data.d[..] {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("AVR report data {:?} not equal to {:?}",
+                        &sgx_quote.report_body.report_data.d[..],
+                        expected_report_data
+                ),
+            ),
+        );
+    }
+
+    let valid_measurements_tmp = match get_config_setting(
+        context,
+        SAWTOOTH_POET_VALID_ENCLAVE_MEASUREMENTS) {
+        Ok(setting) => setting,
+        Err(_) => return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error reading config setting: Enclave measurements"),
+            ),
+        ),
+    };
+    if valid_measurements_tmp.is_none() {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("No enclave measurements found"),
+            ),
+        );
+    }
+    let valid_measurements = valid_measurements_tmp.unwrap();
+
+    let valid_basenames_tmp = match get_config_setting(
+        context,
+        SAWTOOTH_POET_VALID_ENCLAVE_BASENAMES) {
+        Ok(setting) => setting,
+        Err(_) => return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error reading config setting: Enclave basenames"),
+            ),
+        ),
+    };
+    if valid_basenames_tmp.is_none() {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("No enclave basenames found"),
+            ),
+        );
+    }
+    let valid_basenames = valid_basenames_tmp.unwrap();
+
+    // Verify that the enclave measurement is in the list of valid enclave measurements.
+    let measurement = match str::from_utf8(&sgx_quote.report_body.mr_enclave.m) {
+        Ok(string) => string,
+        Err(_) => return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error reading the enclave measurement from the quote")
+            ),
+        ),
+    };
+    // if !valid_measurements.into_iter().any(|name| name == measurement) {
+    if valid_measurements != measurement {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("AVR enclave measurement {} not in the list of valid enclave \
+                measurements {:?}",
+                        measurement,
+                        valid_measurements,
+                ),
+            ),
+        );
+    }
+
+    // Verify that the enclave basename is in the list of valid enclave basenames
+    let basename = match str::from_utf8(&sgx_quote.basename.name) {
+        Ok(string) => string,
+        Err(_) => return Err(
+            ApplyError::InvalidTransaction(
+                format!("Error reading the enclave basename from the quote")
+            ),
+        ),
+    };
+    // if !valid_basenames.into_iter().any(|name| name == basename) {
+    if valid_basenames != basename {
+        return Err(
+            ApplyError::InvalidTransaction(
+                format!("AVR enclave measurement {} not in the list of valid enclave \
+                basenames {:?}",
+                        basename,
+                        valid_basenames,
+                ),
+            ),
+        );
+    }
+
     // Verify that the nonce in the verification report matches the nonce in the transaction
     // payload submitted
     let nonce = match verification_report_dict.get("nonce") {

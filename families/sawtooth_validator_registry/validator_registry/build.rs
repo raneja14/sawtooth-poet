@@ -61,7 +61,7 @@ fn main() {
             .iter()
             .map(|a| a.as_ref())
             .collect::<Vec<&str>>(),
-        includes: &["../protos"],
+        includes: &["../../../protos"],
         customize: Customize {
             ..Default::default()
         },

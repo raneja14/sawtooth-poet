@@ -23,6 +23,7 @@ pub mod sgx_cpu_svn;
 pub mod sgx_attributes;
 pub mod sgx_measurement;
 pub mod sgx_report_data;
+pub mod sgx_quote;
 
 use sgx_structs::sgx_struct_error::SgxStructError;
 

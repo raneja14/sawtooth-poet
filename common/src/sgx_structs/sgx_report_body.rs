@@ -66,7 +66,7 @@ pub struct SgxReportBody {
     misc_select: u32,
     reserved1: [u8; RESERVED1],
     attributes: SgxAttributes,
-    mr_enclave: SgxMeasurement,
+    pub mr_enclave: SgxMeasurement,
     reserved2: [u8; RESERVED2],
     mr_signer: SgxMeasurement,
     #[serde(with = "BigArray")]
@@ -75,7 +75,7 @@ pub struct SgxReportBody {
     isv_svn: u16,
     #[serde(with = "BigArray")]
     reserved4: [u8; RESERVED4],
-    report_data: SgxReportData,
+    pub report_data: SgxReportData,
 }
 
 impl SgxStruct for SgxReportBody {

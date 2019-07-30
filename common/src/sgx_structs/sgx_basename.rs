@@ -33,7 +33,7 @@ const ENDIANNESS: SgxSerdeEndian = SgxSerdeEndian::LittleEndian;
 ///     intel_sgx_sdk_developer_reference_for_linux_os_pdf.pdf
 #[derive(Serialize, Deserialize)]
 pub struct SgxBasename {
-    name: [u8; STRUCT_SIZE],
+    pub name: [u8; STRUCT_SIZE],
 }
 
 impl SgxStruct for SgxBasename {

@@ -81,7 +81,7 @@ impl Poet2Engine {
         // It does send registration request to rest-api if not a genesis node
         // In case of genesis node, creates a batch file in the specified location, defaulting to
         // current working directory from where PoET engine is run.
-        let batch_list = do_create_registration(config, nonce, &signup_info);
+        let batch_list = do_create_registration(config, nonce, signup_info);
 
         // Call the batches REST API with composed payload bytes to be sent
         if config.is_genesis() {

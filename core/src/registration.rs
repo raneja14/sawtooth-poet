@@ -18,7 +18,7 @@
 use hyper::{header, header::HeaderValue, Body, Client, Method, Request, Uri};
 use ias_client::client_utils::read_response_future;
 use poet2_util::{
-    read_file_as_string_ignore_line_end, sha256_from_str, sha512_from_str, write_binary_file,
+    read_file_as_string_ignore_line_end, sha256_from_str, write_binary_file, sha512_of_bytearray,
 };
 use poet_config::PoetConfig;
 use protobuf::{Message, RepeatedField};
@@ -29,7 +29,6 @@ use sawtooth_sdk::{
     },
     signing::{create_context, secp256k1::Secp256k1PrivateKey, PrivateKey, PublicKey, Signer},
 };
-use serde_json;
 use std::{env, path::Path, str};
 use protos::validator_registry::{
     ValidatorRegistryPayload, SignUpInfo,
@@ -60,7 +59,7 @@ const EMPTY_STR: &str = "";
 pub fn do_create_registration(
     config: &PoetConfig,
     nonce: &str,
-    signup_info: &ValidatorRegistrySignupInfo,
+    signup_info: SignUpInfo,
 ) -> BatchList {
     // Read private key from default path if it's not given as input in config
     let mut key_file = config.get_poet_client_private_key_file();
@@ -83,14 +82,13 @@ pub fn do_create_registration(
     name.push_str(&public_key.as_hex()[..PUBLIC_KEY_IDENTIFIER_LENGTH]);
     let id = public_key.as_hex();
     info!("ID in transaction is {}", id.clone());
-    let signup_info_str =
-        serde_json::to_string(signup_info).expect("Error serializing signup info");
+
     let mut raw_payload = ValidatorRegistryPayload::new();
     raw_payload.set_verb(verb);
     raw_payload.set_name(name);
     raw_payload.set_id(id);
-    raw_payload.set_signup_info(signup_info_str);
-    let payload = serde_json::to_string(&raw_payload).expect("Error serializing payload to string");
+    raw_payload.set_signup_info(signup_info);
+    let payload = raw_payload.write_to_bytes().expect("Error serializing the payload");
 
     // Namespace for the TP
     let vr_namespace = &sha256_from_str(VALIDATOR_REGISTRY)[..NAMESPACE_ADDRESS_LENGTH];
@@ -121,7 +119,7 @@ pub fn do_create_registration(
     let transaction_header = create_transaction_header(
         &input_addresses,
         &output_addresses,
-        payload.as_str(),
+        &payload,
         &public_key,
         nonce.to_string(),
     );
@@ -183,7 +181,7 @@ fn create_batch(signer: &Signer, transaction: Transaction) -> Batch {
 fn create_transaction(
     signer: &Signer,
     transaction_header: &TransactionHeader,
-    payload: String,
+    payload: Vec<u8>,
 ) -> Transaction {
     // Construct a transaction, it has transaction header, signature and payload
     let transaction_header_bytes = transaction_header
@@ -195,7 +193,7 @@ fn create_transaction(
     let mut transaction = Transaction::new();
     transaction.set_header(transaction_header_bytes.to_vec());
     transaction.set_header_signature(transaction_header_signature);
-    transaction.set_payload(payload.into_bytes());
+    transaction.set_payload(payload);
     transaction
 }
 
@@ -204,7 +202,7 @@ fn create_transaction(
 fn create_transaction_header(
     input_addresses: &[String],
     output_addresses: &[String],
-    payload: &str,
+    payload: &[u8],
     public_key: &Box<PublicKey>,
     nonce: String,
 ) -> TransactionHeader {
@@ -213,7 +211,7 @@ fn create_transaction_header(
     transaction_header.set_family_name(VALIDATOR_REGISTRY.to_string());
     transaction_header.set_family_version(VALIDATOR_REGISTRY_VERSION.to_string());
     transaction_header.set_nonce(nonce);
-    transaction_header.set_payload_sha512(sha512_from_str(payload));
+    transaction_header.set_payload_sha512(sha512_of_bytearray(payload));
     transaction_header.set_signer_public_key(public_key.as_hex());
     transaction_header.set_batcher_public_key(public_key.as_hex());
     transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));

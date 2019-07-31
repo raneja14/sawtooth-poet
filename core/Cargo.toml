@@ -20,7 +20,7 @@ authors = ["Intel Corporation"]
 description = "PoET2 consensus algorithm for Sawtooth"
 
 [dependencies]
-sawtooth-sdk = "0.2" 
+sawtooth-sdk = "^0.2"
 rand = "0.4.2"
 log = "0.4.5"
 log4rs = "0.8.1"
@@ -38,13 +38,16 @@ bincode = "1.0.1"
 common = { path = "../common" }
 ias_client = { path = "../ias_client" }
 rust_sgxffi = { path = "../sgx/rust_sgxffi"}
-validator-registry-tp = { path = "../validator-registry-tp" }
 hyper = "0.12.11"
 tokio-core = "0.1.17"
 toml = "0.4.8"
 openssl = "0.10.15"
 base64 = "0.10.0"
 hex = "0.3.2"
+
+[build-dependencies]
+protoc-rust = "2.0"
+glob = "0.2"
 
 [package.metadata.deb]
 maintainer = "sawtooth"

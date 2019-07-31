@@ -17,7 +17,7 @@ version: "3.6"
 
 services:
 
- poet-engine-1:
+ poet-engine:
      build:
        context: .
        dockerfile: ../../core/Dockerfile

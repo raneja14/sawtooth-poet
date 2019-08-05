@@ -58,7 +58,7 @@ poet_client_private_key_file = '/etc/sawtooth/keys/validator.priv'
 # node. This is required for PoET engine to decide if need to send registration
 # request or not.
 
-is_genesis_node = false
+is_genesis_node = true
 
 # genesis_batch_path is applicable for genesis node. The path where batch file
 # will be stored, default being current working directory.
@@ -76,4 +76,4 @@ validator_pub_key = '/etc/sawtooth/keys/validator.pub'
 log_dir = '/var/log/sawtooth-poet'
 
 
-lib_path = '../build/bin/libpoet_enclave_sim.signed.so'
+lib_path = '../build/bin/libpoet_enclave_hw.signed.so'

@@ -23,6 +23,9 @@
 #include <iostream>
 #include <vector>
 
+
+Poet* Poet::instance = 0;
+
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 bool _is_sgx_simulator()
 {
@@ -38,12 +41,18 @@ Poet::Poet(
     poet_err_t ret = POET_SUCCESS;
     try {
         MyLog(POET_LOG_INFO, "Initializing SGX Poet enclave\n");
-        ret = Poet_Initialize(
+        
+	printf("MODULE PATH = %s\n",enclaveModulePath.c_str());
+	printf("SPID = %s\n",spid.c_str());
+
+	ret = Poet_Initialize(
             enclaveModulePath.c_str(),
             spid.c_str(),
             MyLog
             );          
+	
         ThrowPoetError(ret);
+        printf("PASS THROW 1");
 
         StringBuffer mrEnclaveBuffer(Poet_GetEnclaveMeasurementSize());
         StringBuffer basenameBuffer(Poet_GetEnclaveBasenameSize());
@@ -57,6 +66,7 @@ Poet::Poet(
                 basenameBuffer.length,
                 epidGroupBuffer.data(),
                 epidGroupBuffer.length));
+	printf("PASS THROW 2");
 
         this->mr_enclave = mrEnclaveBuffer.str();
         this->basename = basenameBuffer.str();
@@ -89,7 +99,7 @@ Poet* Poet::getInstance(
 }
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-void Poet::set_signature_revocation_list(
+poet_err_t Poet::set_signature_revocation_list(
     const std::string& signature_revocation_list
     )
 {
@@ -102,5 +112,6 @@ void Poet::set_signature_revocation_list(
         ret = POET_ERR_UNKNOWN;
         ThrowPoetError(ret);
     }
+    return ret;
 } // Poet::set_signature_revocation_lists
 

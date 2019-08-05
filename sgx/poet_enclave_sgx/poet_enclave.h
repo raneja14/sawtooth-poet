@@ -211,7 +211,7 @@ public:
 
     virtual ~Poet();
 
-    void set_signature_revocation_list(
+    poet_err_t set_signature_revocation_list(
         const std::string& signature_revocation_list
         );
 

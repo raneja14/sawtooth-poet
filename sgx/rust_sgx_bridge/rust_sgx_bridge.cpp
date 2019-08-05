@@ -30,7 +30,7 @@
 
 #define DURATION_LENGTH_BYTES 8 //Duration to return is 64 bits (8 bytes)
 
-Poet* Poet::instance = 0;
+//Poet* Poet::instance = 0;
 
 WaitCertificate* validate_wait_certificate(const char *ser_wait_cert,
               const char *ser_wait_cert_sig);
@@ -95,7 +95,7 @@ r_error_code_t r_set_signature_revocation_list(r_sgx_enclave_id_t *eid,
         return R_FAILURE;
     }
     try {
-        poet_err_t ret = Poet_SetSignatureRevocationList(sig_revocation_list);
+        poet_err_t ret =((Poet*)(eid->handle))->set_signature_revocation_list(sig_revocation_list);// Poet_SetSignatureRevocationList(sig_revocation_list);
         if (ret != POET_SUCCESS) {
             return R_FAILURE;
         }

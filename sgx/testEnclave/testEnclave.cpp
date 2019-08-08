@@ -333,7 +333,7 @@ void test_ecall_VerifySignupInfo(sgx_enclave_id_t enclaveId,
 
 void loadEnclave() {
 
-    std::string enclaveFilePath = "libpoet_enclave_hw.signed.so";
+    std::string enclaveFilePath = "libpoet_enclave_sim.signed.so";
     sgx_launch_token_t token = { 0 };
     int flags = SGX_DEBUG_FLAG;
 

@@ -100,7 +100,7 @@ SET(TRTS_LIBRARY_NAME "sgx_trts_sim")
 SET(SERVICE_LIBRARY_NAME "sgx_tservice_sim")
 
 ADD_SGX_LIBS(TRUE)
-SGX_SIGN_ENCLAVE(${PROJECT_NAME}_sim "" ${PROJECT_KEY} ${PROJECT_CONFIG})
+SGX_SIGN_ENCLAVE(${PROJECT_NAME}_sim ${PROJECT_KEY} ${PROJECT_CONFIG})
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}_sim -Wl,--whole-archive -l${TRTS_LIBRARY_NAME} -Wl,--no-whole-archive)
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}_sim -Wl,--start-group -lsgx_tstdc -lsgx_tstdcxx -lsgx_tcrypto -lsgx_tkey_exchange -l${SERVICE_LIBRARY_NAME} -Wl,--end-group)
@@ -119,7 +119,7 @@ SET(TRTS_LIBRARY_NAME "sgx_trts")
 SET(SERVICE_LIBRARY_NAME "sgx_tservice")
 
 ADD_SGX_LIBS(FALSE)
-SGX_SIGN_ENCLAVE(${PROJECT_NAME}_hw "" ${PROJECT_KEY} ${PROJECT_CONFIG})
+SGX_SIGN_ENCLAVE(${PROJECT_NAME}_hw ${PROJECT_KEY} ${PROJECT_CONFIG})
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}_hw -Wl,--whole-archive -l${TRTS_LIBRARY_NAME} -Wl,--no-whole-archive)
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}_hw -Wl,--start-group -lsgx_tstdc -lsgx_tstdcxx -lsgx_tcrypto -lsgx_tkey_exchange -l${SERVICE_LIBRARY_NAME} -Wl,--end-group)

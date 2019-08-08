@@ -221,4 +221,4 @@ public:
 }; // class Poet
 
 void InitializePoetEnclaveModule();
-bool _is_sgx_simulator();
+extern "C" {  bool _is_sgx_simulator(); }

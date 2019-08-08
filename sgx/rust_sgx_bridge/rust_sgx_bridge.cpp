@@ -21,24 +21,54 @@
 #include "poet_enclave_u.h"
 #include "sgx_urts.h"
 #include "rust_sgx_bridge.h"
+#include "dynamic_libs.h"
 #include "poet_enclave.h"
 #include "c11_support.h"
 #include "error.h"
 #include <iostream>
-#include "poet.h"
 #include "common.h"
+#include <dlfcn.h>
 
 #define DURATION_LENGTH_BYTES 8 //Duration to return is 64 bits (8 bytes)
 
-//Poet* Poet::instance = 0;
+
+void *lib_handle;
 
 WaitCertificate* validate_wait_certificate(const char *ser_wait_cert,
               const char *ser_wait_cert_sig);
+
+
+void initialize_handle(){_is_sgx_simulator
+	lib_handle = dlopen("/project/sawtooth-poet/build/bin/libpoet_bridge_sim.so",RTLD_LAZY);
+}
+
+void initialize_func_ptr(){
+     printf("FUNC PTRS = \n");
+     initialize_handle();
+     if(!lib_handle){
+     	printf("DL OPEN FAIL %s\n",dlerror());
+     
+     }else{
+        printf("DL OPEN OK\n");
+	*(void**)(&fptr_is_sgx_simulator) = dlsym(lib_handle,"_is_sgx_simulator"); 
+        
+	if(!fptr_is_sgx_simulator){
+	 printf("NO FPTR %s\n",dlerror());
+	}else{
+	 printf("FOUND FPTR\n");
+	 bool ret = (*fptr_is_sgx_simulator)();
+	 printf("RES == %d\n",ret);
+	}
+     }
+}
+
 
 r_error_code_t r_initialize_enclave(r_sgx_enclave_id_t *eid,
                                     const char *enclave_path,
                                     const char *spid)
 {
+    initialize_func_ptr();
+
     //check parameters
     if (!eid || !enclave_path || !spid) {
         return R_FAILURE;

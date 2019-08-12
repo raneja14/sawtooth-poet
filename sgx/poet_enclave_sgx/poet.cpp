@@ -15,7 +15,7 @@
 ------------------------------------------------------------------------------
 */
 
-#include <stdio.h>
+#include <stdio.h>  
 #include "common.h"
 #include "poet_enclave.h"
 #include "poet.h"
@@ -36,18 +36,18 @@ bool _is_sgx_simulator()
 Poet* _get_poet_instance(
     const std::string& enclaveModulePath,
     const std::string& spid ){
-      printf("INSTANCE \n");
-      return Poet::getInstance(enclaveModulePath, spid);
-}
+    printf("NEW POET INSTANCE\n");    
+    return Poet::getInstance(enclaveModulePath, spid);
+}// _get_poet_instance
 
 
 poet_err_t _set_signature_revocation_list(
     const std::string& signature_revocation_list
-    )
-{
+    ){
       printf("SIG ARG=> %s\n",signature_revocation_list.c_str());
       return Poet::set_signature_revocation_list(signature_revocation_list);
-}
+}// _set_signature_revocation_list
+
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 Poet::Poet(
     const std::string& enclaveModulePath,
@@ -68,8 +68,6 @@ Poet::Poet(
             );          
 	
         ThrowPoetError(ret);
-        printf("PASS THROW 1");
-
         StringBuffer mrEnclaveBuffer(Poet_GetEnclaveMeasurementSize());
         StringBuffer basenameBuffer(Poet_GetEnclaveBasenameSize());
         StringBuffer epidGroupBuffer(Poet_GetEpidGroupSize());
@@ -82,9 +80,7 @@ Poet::Poet(
                 basenameBuffer.length,
                 epidGroupBuffer.data(),
                 epidGroupBuffer.length));
-	printf("PASS THROW 2");
-
-        this->mr_enclave = mrEnclaveBuffer.str();
+	    this->mr_enclave = mrEnclaveBuffer.str();
         this->basename = basenameBuffer.str();
         this->epid_group = epidGroupBuffer.str();
     } catch(...) {
@@ -119,7 +115,6 @@ poet_err_t Poet::set_signature_revocation_list(
     const std::string& signature_revocation_list
     )
 {    
-    printf("REVOCATION LIST => %s\n",signature_revocation_list.c_str());
     poet_err_t ret = POET_SUCCESS;
     try {
         ThrowPoetError(

@@ -40,6 +40,8 @@ typedef enum r_error_code_t {
 extern "C" {
 #endif
 
+r_error_code_t r_link_bridge(const char *bridge_path);
+
 r_error_code_t r_initialize_enclave(r_sgx_enclave_id_t *eid,
                                 const char *enclave_path, const char *spid);
 

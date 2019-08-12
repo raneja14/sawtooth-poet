@@ -32,61 +32,93 @@
 #define DURATION_LENGTH_BYTES 8 //Duration to return is 64 bits (8 bytes)
 
 
-void *lib_handle;
+//void *lib_handle;
 
 WaitCertificate* validate_wait_certificate(const char *ser_wait_cert,
               const char *ser_wait_cert_sig);
 
-
-void initialize_handle(const char *bridge_path){
-	printf("BRIDGE PATH => %s\n", bridge_path);
-	lib_handle = dlopen("/project/sawtooth-poet/build/bin/libpoet_bridge_sim.so",RTLD_LAZY);
-	if(lib_handle == NULL) {
-   		printf("%s\n", dlerror());
-	}
-}
-
-void initialize_func_ptr( const char *enclave_path,const char *spid){
-        printf("DL OPEN OK\n%s \n%s\n",enclave_path,spid);
-	fptr_is_sgx_simulator = (bool (*)(void)) dlsym(lib_handle,"_is_sgx_simulator"); 
- //       *(void**)(&fptr_get_poet_instance) = dlsym(lib_handle,"_get_poet_instance");
- //
-        fptr_set_signature_revocation_list = (poet_err_t (*)(const std::string&))dlsym(lib_handle,"_set_signature_revocation_list");
-	printf("SIGRL %s\n", dlerror());
-
-        fptr_verify_wait_certificate = ( bool (*)(const std::string&,const std::string&,const std::string& ))dlsym(lib_handle,"_verify_wait_certificate");
-	printf("VERIFY %s\n", dlerror());
+r_error_code_t initialize_func_ptr(void *lib_handle){
+	printf("Initializing function pointers\n");
 
 	fptr_create_signup_data = (_SignupData* (*)(const std::string&))dlsym(lib_handle,"_create_signup_data");
-	 printf("SIGNUP %s\n", dlerror());
+    if(!fptr_create_signup_data) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
 
-	if(!fptr_is_sgx_simulator || !fptr_verify_wait_certificate || !fptr_create_signup_data){
-	 printf("NO FPTR %s\n",dlerror());
-	}else{
-	 printf("FOUND FPTR\n");
-	
-	 bool ret = (*fptr_is_sgx_simulator)();
-          printf("RES == %d\n",ret);
-        
-//	  Poet* poet = fptr_get_poet_instance(enclave_path, spid);
- //        if(!poet){
-//	  printf("NULL POET\n");
-//	 }else{
- //         poet_err_t res= poet->set_signature_revocation_list(spid);
-//	    printf("ERR RES == %d\n",res);  
-//	 }
-     
-	bool res1 = (*fptr_verify_wait_certificate)(spid,spid,spid);
-	 printf("ERR RES FPTR== %d\n",res1);
+    fptr_destroy_signup_data = (void (*)(_SignupData*))dlsym(lib_handle,"_destroy_signup_data");
+    if(!fptr_destroy_signup_data) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
 
-	(*fptr_create_signup_data)(enclave_path);
-	(*fptr_set_signature_revocation_list)(spid);
-        // printf("ERR RES FPTR== %d\n",res1);
-//	poet_err_t res2 = (*fptr_set_signature_revocation_list)(spid);
- //       printf(" RES2 FPTR== %d\n",res2);
+    fptr_deserialize_signup_info = (SignupInfo* (*)(const std::string&))dlsym(lib_handle,"deserialize_signup_info");
+    if(!fptr_deserialize_signup_info) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
 
+    fptr_deserialize_wait_certificate = (WaitCertificate* (*)(const std::string&,const std::string&))dlsym(lib_handle,"deserialize_wait_certificate");
+    if(!fptr_deserialize_wait_certificate) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
 
+	fptr_initialize_wait_certificate = (poet_err_t (*)(const std::string&,const std::string&,const std::string&,const std::string&,uint8_t*,size_t))dlsym(lib_handle,"initialize_wait_certificate");
+    if(!fptr_initialize_wait_certificate) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+    fptr_finalize_wait_certificate = (WaitCertificate* (*)(const std::string&,const std::string&,const std::string&,const std::string&,uint64_t))dlsym(lib_handle,"finalize_wait_certificate");
+    if(!fptr_finalize_wait_certificate) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+	fptr_verify_wait_certificate = (bool (*)(const std::string&,const std::string&,const std::string&))dlsym(lib_handle,"_verify_wait_certificate");
+    if(!fptr_verify_wait_certificate) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+    fptr_destroy_wait_certificate = (void (*)(WaitCertificate*))dlsym(lib_handle,"_destroy_wait_certificate");
+    if(!fptr_destroy_wait_certificate) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+	fptr_get_poet_instance = (Poet* (*)(const std::string&,const std::string&))dlsym(lib_handle,"_get_poet_instance");
+    if(!fptr_get_poet_instance) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+    fptr_set_signature_revocation_list = (poet_err_t (*)(const std::string&))dlsym(lib_handle,"_set_signature_revocation_list");
+    if(!fptr_set_signature_revocation_list) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+
+    fptr_is_sgx_simulator = (bool (*)(void)) dlsym(lib_handle,"_is_sgx_simulator"); 
+    if(!fptr_is_sgx_simulator) {
+        printf("%s\n", dlerror());
+        return R_FAILURE;
+    }
+    printf("Initialized function pointers\n");
+    return R_SUCCESS;
+}
+
+r_error_code_t r_link_bridge(const char *bridge_path){
+	void *lib_handle = dlopen(bridge_path,RTLD_LAZY);
+	if(!lib_handle) {
+   		printf("%s\n", dlerror());
+        return R_FAILURE;
 	}
+    if(initialize_func_ptr(lib_handle) == R_FAILURE){
+        return R_FAILURE;
+    }
+    return R_SUCCESS;
 }
 
 
@@ -98,17 +130,8 @@ r_error_code_t r_initialize_enclave(r_sgx_enclave_id_t *eid,
     if (!eid || !enclave_path || !spid) {
         return R_FAILURE;
     }
-     printf("\nINTIALIZE\n");
-     initialize_handle(enclave_path);
-     if(!lib_handle){
-        printf("DL OPEN FAIL %s\n",dlerror());
-         return R_FAILURE;
-     }
-     printf("\nFUNC PTR\n");
-     initialize_func_ptr(enclave_path, spid);
-
     try{
-        Poet *poet_enclave_id = Poet::getInstance(enclave_path, spid);
+        Poet *poet_enclave_id = (*fptr_get_poet_instance)(enclave_path, spid);
         //store the enclave id
         eid->handle = (intptr_t)poet_enclave_id;
         eid->mr_enclave = (char *)poet_enclave_id->mr_enclave.c_str();
@@ -141,7 +164,7 @@ r_error_code_t r_is_sgx_simulator(r_sgx_enclave_id_t *eid,
     if (!eid->handle) {
         return R_FAILURE;
     }
-    bool is_simulator = _is_sgx_simulator();
+    bool is_simulator = (*fptr_is_sgx_simulator)();
     if (!is_simulator) {
         *sgx_simulator = false;
     } else {
@@ -159,7 +182,7 @@ r_error_code_t r_set_signature_revocation_list(r_sgx_enclave_id_t *eid,
         return R_FAILURE;
     }
     try {
-        poet_err_t ret =((Poet*)(eid->handle))->set_signature_revocation_list(sig_revocation_list);// Poet_SetSignatureRevocationList(sig_revocation_list);
+        poet_err_t ret = (*fptr_set_signature_revocation_list)(sig_revocation_list);
         if (ret != POET_SUCCESS) {
             return R_FAILURE;
         }
@@ -184,7 +207,7 @@ r_error_code_t r_create_signup_info(r_sgx_enclave_id_t *eid,
     }
 
     try {
-        _SignupData *signup_data = _create_signup_data(opk_hash);
+        _SignupData *signup_data = (*fptr_create_signup_data)(opk_hash);
         if (signup_data == nullptr) {
             return R_FAILURE;
         }
@@ -222,7 +245,7 @@ r_error_code_t r_initialize_wait_certificate(r_sgx_enclave_id_t *eid,
     }
 
     try {
-        poet_err_t ret = initialize_wait_certificate(prev_wait_cert,
+        poet_err_t ret = (*fptr_initialize_wait_certificate)(prev_wait_cert,
                                             validator_id, prev_wait_cert_sig,
                                             poet_pub_key, duration,
                                             DURATION_LENGTH_BYTES);
@@ -255,7 +278,7 @@ r_error_code_t r_finalize_wait_certificate(r_sgx_enclave_id_t *eid,
     }
 
     try {
-        WaitCertificate *wait_certificate = finalize_wait_certificate(
+        WaitCertificate *wait_certificate = (*fptr_finalize_wait_certificate)(
                                                             prev_wait_cert,
                                                             prev_block_id,
                                                             prev_wait_cert_sig,
@@ -287,7 +310,7 @@ r_error_code_t r_finalize_wait_certificate(r_sgx_enclave_id_t *eid,
 WaitCertificate* validate_wait_certificate(const char *ser_wait_cert,
                                            const char *ser_wait_cert_sig) {
     
-    return deserialize_wait_certificate(ser_wait_cert, 
+    return (*fptr_deserialize_wait_certificate)(ser_wait_cert, 
                                           ser_wait_cert_sig);
 }
 
@@ -303,7 +326,7 @@ r_error_code_t r_verify_wait_certificate(r_sgx_enclave_id_t *eid, const char *pp
     }
 
     try {
-        bool ret = _verify_wait_certificate(wait_cert, wait_cert_sign, ppk);
+        bool ret = (*fptr_verify_wait_certificate)(wait_cert, wait_cert_sign, ppk);
         if (!ret) {
             *verify_cert_status = false;
         } else {
@@ -335,7 +358,7 @@ r_error_code_t r_release_signup_info(r_sgx_enclave_id_t *eid,
 
     _SignupData *signup_data = (_SignupData *)signup_info->handle;
     if (signup_data != nullptr) {
-        _destroy_signup_data(signup_data);
+        (*fptr_destroy_signup_data)(signup_data);
         signup_info->handle = 0;
     }    
     return R_SUCCESS;
@@ -354,7 +377,7 @@ r_error_code_t r_release_wait_certificate(r_sgx_enclave_id_t *eid,
 
     WaitCertificate *wait_certificate = (WaitCertificate *)wait_cert->handle;
     if (wait_certificate != nullptr) {
-        _destroy_wait_certificate(wait_certificate);
+        (*fptr_destroy_wait_certificate)(wait_certificate);
         wait_cert->handle = 0;
     }
     return R_SUCCESS;

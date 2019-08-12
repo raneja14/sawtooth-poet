@@ -107,6 +107,23 @@ impl EnclaveConfig {
         }
     }
 
+    pub fn link_bridge(&mut self, config: &PoetConfig) {
+        let lib_file_path = config.get_lib_poet_bridge_path();
+        let mut lib_path = env::current_dir().unwrap();
+        lib_path.push(lib_file_path.as_str());
+        if !Path::new(&lib_path).exists() {
+            lib_path = PathBuf::from("/usr/lib/libpoet_bridge_sim.so");
+            if !Path::new(&lib_path).exists() {
+                panic!("There is missing libpoet_bridge_sim.so");
+            }
+        }
+        let bin_path = &lib_path.into_os_string().into_string().unwrap();
+        info!("BRIDGE PATH => {:?}",bin_path);
+        ffi::link_poet_bridge(bin_path)
+            .expect("Failed to link poet bridge");
+        info!("Poet bridge linked");
+    }
+
     pub fn initialize_enclave(&mut self, config: &PoetConfig) {
         let mut eid: r_sgx_enclave_id_t = r_sgx_enclave_id_t {
             handle: 0,
@@ -118,7 +135,7 @@ impl EnclaveConfig {
         // Always fetch SPID from config file, dummy values are accepted when running in
         // simulator mode.
         let spid_str = config.get_spid();
-        let lib_file_path = config.get_lib_path();
+        let lib_file_path = config.get_lib_enclave_path();
 
         let mut lib_path = env::current_dir().unwrap();
         lib_path.push(lib_file_path.as_str());
@@ -320,14 +337,15 @@ impl EnclaveConfig {
 
     /// Returns boolean, information if POET is run in hardware or simulator mode.
     pub fn check_if_sgx_simulator(&mut self) -> bool {
-        let mut eid: r_sgx_enclave_id_t = self.enclave_id;
-        let mut sgx_simulator: bool = false;
-        ffi::is_sgx_simulator(&mut eid, &mut sgx_simulator).expect("Failed to check SGX simulator");
-        debug!(
-            "is_sgx_simulator ? {:?}",
-            if sgx_simulator { "Yes" } else { "No" }
-        );
-        sgx_simulator
+        // let mut eid: r_sgx_enclave_id_t = self.enclave_id;
+        // let mut sgx_simulator: bool = false;
+        // ffi::is_sgx_simulator(&mut eid, &mut sgx_simulator).expect("Failed to check SGX simulator");
+        // debug!(
+        //     "is_sgx_simulator ? {:?}",
+        //     if sgx_simulator { "Yes" } else { "No" }
+        // );
+        // sgx_simulator
+        return true;
     }
 
     pub fn set_sig_revocation_list(&mut self, sig_rev_list: &str) {

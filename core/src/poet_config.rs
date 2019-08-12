@@ -29,7 +29,8 @@ pub struct PoetConfig {
     genesis_batch_path: String,
     validator_pub_key: String,
     log_dir: String,
-    lib_path: String,
+    lib_enclave_path: String,
+    lib_poet_bridge_path: String,
 }
 
 impl PoetConfig {
@@ -86,12 +87,12 @@ impl PoetConfig {
         return self.log_dir.clone();
     }
 
-    pub fn set_lib_path(&mut self, path: String) {
-        self.lib_path = path;
+    pub fn get_lib_enclave_path(&self) -> String {
+        self.lib_enclave_path.clone()
     }
 
-    pub fn get_lib_path(&self) -> String {
-        self.lib_path.clone()
+    pub fn get_lib_poet_bridge_path(&self) -> String {
+        self.lib_poet_bridge_path.clone()
     }
 
 

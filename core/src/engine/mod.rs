@@ -99,6 +99,7 @@ impl Poet2Engine {
 
     fn initialize_enclave(config: &PoetConfig) -> EnclaveConfig {
         let mut enclave = EnclaveConfig::default();
+        enclave.link_bridge(config);
         enclave.initialize_enclave(config);
         enclave.initialize_remote_attestation(config);
         enclave

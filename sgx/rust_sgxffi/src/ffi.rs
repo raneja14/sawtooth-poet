@@ -28,6 +28,21 @@ use std::ffi::CString;
 use std::mem::transmute;
 use std::str;
 
+pub fn link_poet_bridge(
+    poet_bridge: &str,
+) -> Result<String, String> {
+    unsafe {
+        let bridge_cstring = CString::new(poet_bridge).unwrap();
+        let bridge_link_status =
+            r_link_bridge(bridge_cstring.as_ptr());
+
+        match bridge_link_status {
+            R_SUCCESS => Ok("Success".to_string()),
+            R_FAILURE => Err("Bidge linking failed".to_string()),
+        }
+    }
+}
+
 pub fn init_enclave(
     eid: &mut r_sgx_enclave_id_t,
     signed_enclave: &str,

@@ -654,10 +654,8 @@ namespace sawtooth {
                     10, // retries
                     250 // retryWaitMs
                     );
-		printf(" CANT THROW ERR HERE\n");
-                ThrowSgxError(ret, "Unable to create enclave.");
-		printf(" PASS 'UNABLE TO CREATE ENCLAVE' THROW CHECK\n");
-
+		        ThrowSgxError(ret, "Unable to create enclave.");
+		
                 // Initialize the enclave
                 poet_err_t poetError = POET_SUCCESS;
                 Log(POET_LOG_INFO, "ecall_Initialize");
@@ -688,22 +686,18 @@ namespace sawtooth {
             bool retry = true;
             do {
                 ret = fxn();
-		printf("RET %d= \n",ret);
-                if (SGX_ERROR_ENCLAVE_LOST == ret) {
+		        if (SGX_ERROR_ENCLAVE_LOST == ret) {
                     // Enclave lost, potentially due to power state change
                     // reload the enclave and try again
-                    printf("NCLAVE LOST\n");
-		    this->Unload();
+            this->Unload();
                     this->LoadEnclave();
                 } else if (SGX_ERROR_DEVICE_BUSY == ret) {
                     // Device is busy... wait and try again.
-		    printf("DEVICE BUSY \n");
-                    Sleep(retryDelayMs);
+		            Sleep(retryDelayMs);
                     count++;
                     retry = count <= retries;
                 } else {
-			printf("UNKNOW ERR CODE\n");
-                    // Not an error code we need to handle here,
+		            // Not an error code we need to handle here,
                     // exit the loop and let the calling function handle it.
                     retry = false;
                 }

@@ -38,28 +38,55 @@ WaitCertificate* validate_wait_certificate(const char *ser_wait_cert,
               const char *ser_wait_cert_sig);
 
 
-void initialize_handle(){_is_sgx_simulator
+void initialize_handle(const char *bridge_path){
+	printf("BRIDGE PATH => %s\n", bridge_path);
 	lib_handle = dlopen("/project/sawtooth-poet/build/bin/libpoet_bridge_sim.so",RTLD_LAZY);
+	if(lib_handle == NULL) {
+   		printf("%s\n", dlerror());
+	}
 }
 
-void initialize_func_ptr(){
-     printf("FUNC PTRS = \n");
-     initialize_handle();
-     if(!lib_handle){
-     	printf("DL OPEN FAIL %s\n",dlerror());
-     
-     }else{
-        printf("DL OPEN OK\n");
-	*(void**)(&fptr_is_sgx_simulator) = dlsym(lib_handle,"_is_sgx_simulator"); 
-        
-	if(!fptr_is_sgx_simulator){
+void initialize_func_ptr( const char *enclave_path,const char *spid){
+        printf("DL OPEN OK\n%s \n%s\n",enclave_path,spid);
+	fptr_is_sgx_simulator = (bool (*)(void)) dlsym(lib_handle,"_is_sgx_simulator"); 
+ //       *(void**)(&fptr_get_poet_instance) = dlsym(lib_handle,"_get_poet_instance");
+ //
+        fptr_set_signature_revocation_list = (poet_err_t (*)(const std::string&))dlsym(lib_handle,"_set_signature_revocation_list");
+	printf("SIGRL %s\n", dlerror());
+
+        fptr_verify_wait_certificate = ( bool (*)(const std::string&,const std::string&,const std::string& ))dlsym(lib_handle,"_verify_wait_certificate");
+	printf("VERIFY %s\n", dlerror());
+
+	fptr_create_signup_data = (_SignupData* (*)(const std::string&))dlsym(lib_handle,"_create_signup_data");
+	 printf("SIGNUP %s\n", dlerror());
+
+	if(!fptr_is_sgx_simulator || !fptr_verify_wait_certificate || !fptr_create_signup_data){
 	 printf("NO FPTR %s\n",dlerror());
 	}else{
 	 printf("FOUND FPTR\n");
+	
 	 bool ret = (*fptr_is_sgx_simulator)();
-	 printf("RES == %d\n",ret);
+          printf("RES == %d\n",ret);
+        
+//	  Poet* poet = fptr_get_poet_instance(enclave_path, spid);
+ //        if(!poet){
+//	  printf("NULL POET\n");
+//	 }else{
+ //         poet_err_t res= poet->set_signature_revocation_list(spid);
+//	    printf("ERR RES == %d\n",res);  
+//	 }
+     
+	bool res1 = (*fptr_verify_wait_certificate)(spid,spid,spid);
+	 printf("ERR RES FPTR== %d\n",res1);
+
+	(*fptr_create_signup_data)(enclave_path);
+	(*fptr_set_signature_revocation_list)(spid);
+        // printf("ERR RES FPTR== %d\n",res1);
+//	poet_err_t res2 = (*fptr_set_signature_revocation_list)(spid);
+ //       printf(" RES2 FPTR== %d\n",res2);
+
+
 	}
-     }
 }
 
 
@@ -67,12 +94,19 @@ r_error_code_t r_initialize_enclave(r_sgx_enclave_id_t *eid,
                                     const char *enclave_path,
                                     const char *spid)
 {
-    initialize_func_ptr();
-
     //check parameters
     if (!eid || !enclave_path || !spid) {
         return R_FAILURE;
     }
+     printf("\nINTIALIZE\n");
+     initialize_handle(enclave_path);
+     if(!lib_handle){
+        printf("DL OPEN FAIL %s\n",dlerror());
+         return R_FAILURE;
+     }
+     printf("\nFUNC PTR\n");
+     initialize_func_ptr(enclave_path, spid);
+
     try{
         Poet *poet_enclave_id = Poet::getInstance(enclave_path, spid);
         //store the enclave id

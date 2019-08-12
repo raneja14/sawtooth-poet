@@ -32,6 +32,22 @@ bool _is_sgx_simulator()
     return 0 != Poet_IsSgxSimulator();
 } // _is_sgx_simulator
 
+
+Poet* _get_poet_instance(
+    const std::string& enclaveModulePath,
+    const std::string& spid ){
+      printf("INSTANCE \n");
+      return Poet::getInstance(enclaveModulePath, spid);
+}
+
+
+poet_err_t _set_signature_revocation_list(
+    const std::string& signature_revocation_list
+    )
+{
+      printf("SIG ARG=> %s\n",signature_revocation_list.c_str());
+      return Poet::set_signature_revocation_list(signature_revocation_list);
+}
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 Poet::Poet(
     const std::string& enclaveModulePath,
@@ -102,7 +118,8 @@ Poet* Poet::getInstance(
 poet_err_t Poet::set_signature_revocation_list(
     const std::string& signature_revocation_list
     )
-{
+{    
+    printf("REVOCATION LIST => %s\n",signature_revocation_list.c_str());
     poet_err_t ret = POET_SUCCESS;
     try {
         ThrowPoetError(

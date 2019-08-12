@@ -16,7 +16,6 @@
 */
 
 #include <json-c/json.h>
-
 #include "poet_enclave.h"
 #include "common.h"
 #include "poet.h"
@@ -56,13 +55,15 @@ bool _verify_wait_certificate(
     const std::string& poetPublicKey
     )
 {
-    poet_err_t ret =
+        printf("VERIFY CERTIFICATE \n");
+        printf("ARGS => %s %s %s \n",serializedWaitCertificate.c_str(),waitCertificateSignature.c_str(),poetPublicKey.c_str());
+     	poet_err_t ret =
         Poet_VerifyWaitCertificate(
             serializedWaitCertificate.c_str(),
             serializedWaitCertificate.length(),
             waitCertificateSignature.c_str(),
             poetPublicKey.c_str() );
-    ThrowPoetError(ret);
+        ThrowPoetError(ret);
 
     if(ret == POET_SUCCESS) return true;
     return false;

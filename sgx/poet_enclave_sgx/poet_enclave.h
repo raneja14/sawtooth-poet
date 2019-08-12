@@ -50,13 +50,7 @@ protected:
         );
 }; // class _SignupData
 
-_SignupData* _create_signup_data(
-    const std::string& originator_public_key_hash
-    );
 
-void _destroy_signup_data(
-    _SignupData* signup_data
-    );
 
 class SignupInfo
 {
@@ -87,10 +81,6 @@ private:
     */
     std::string serialized;
 }; // class SignupInfo
-
-SignupInfo* deserialize_signup_info(
-    const std::string& serialized_signup_info
-    );
 
 
 class WaitCertificate
@@ -162,6 +152,50 @@ protected:
 }; // class WaitCertificate
 
 
+class Poet
+{
+private:
+    static Poet* instance;
+    Poet(
+        const std::string& enclaveModulePath,
+        const std::string& spid
+        );
+public:
+    static Poet *getInstance(
+        const std::string& enclaveModulePath,
+        const std::string& spid
+        );
+    // overriding copy constructor and assignment operator
+    Poet(const Poet &) = delete;
+    Poet & operator = (const Poet &) = delete;
+
+    virtual ~Poet();
+
+    static poet_err_t set_signature_revocation_list(
+       const std::string& signature_revocation_list
+      );
+
+    std::string mr_enclave;         // hex encoding of the enclave measurement
+    std::string basename;           // hex encoding of the basename
+    std::string epid_group;         // hex encoding of enclave epid group
+}; // class Poet
+
+void InitializePoetEnclaveModule(); 
+    
+extern "C" {
+
+_SignupData* _create_signup_data(
+    const std::string& originator_public_key_hash
+    );
+
+void _destroy_signup_data(
+    _SignupData* signup_data
+    );
+
+SignupInfo* deserialize_signup_info(
+    const std::string& serialized_signup_info
+    );
+
 WaitCertificate* deserialize_wait_certificate(
     const std::string& serialized_certificate,
     const std::string& signature
@@ -192,33 +226,15 @@ bool _verify_wait_certificate(
 
 void _destroy_wait_certificate(WaitCertificate *waitCert);
 
-class Poet
-{
-private:
-    static Poet* instance;
-    Poet(
-        const std::string& enclaveModulePath,
-        const std::string& spid
-        );
-public:
-    static Poet *getInstance(
-        const std::string& enclaveModulePath,
-        const std::string& spid
-        );
-    // overriding copy constructor and assignment operator
-    Poet(const Poet &) = delete;
-    Poet & operator = (const Poet &) = delete;
+Poet* _get_poet_instance(
+     const std::string& enclaveModulePath,
+     const std::string& spid
+     );
 
-    virtual ~Poet();
+poet_err_t _set_signature_revocation_list(
+     const std::string& signature_revocation_list
+     );
 
-    poet_err_t set_signature_revocation_list(
-        const std::string& signature_revocation_list
-        );
+bool _is_sgx_simulator();
 
-    std::string mr_enclave;         // hex encoding of the enclave measurement
-    std::string basename;           // hex encoding of the basename
-    std::string epid_group;         // hex encoding of enclave epid group
-}; // class Poet
-
-void InitializePoetEnclaveModule();
-extern "C" {  bool _is_sgx_simulator(); }
+}// extern C

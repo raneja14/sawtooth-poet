@@ -15,7 +15,7 @@
 ------------------------------------------------------------------------------
 */
 
-// common extern create imports for all modules in this crate
+// common extern crate imports for all modules in this crate
 extern crate futures;
 extern crate hyper;
 #[cfg(test)]
@@ -25,7 +25,14 @@ extern crate lazy_static;
 extern crate log;
 extern crate serde_json;
 extern crate tokio;
+extern crate common;
+extern crate crypto;
+extern crate rand;
+extern crate base64;
+extern crate chrono;
+extern crate openssl;
 
 // modules defined in this crate
 pub mod client_utils;
 pub mod ias_client;
+mod ias_client_sim;

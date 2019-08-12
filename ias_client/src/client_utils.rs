@@ -26,10 +26,13 @@ use futures::{future, future::Future, stream::Stream};
 use hyper::{
     client::{HttpConnector, ResponseFuture},
     header::HeaderMap,
-    Body, Client, Error, StatusCode, Uri,
+    Body, Client, Error, StatusCode, Uri, Response,
 };
 use std::{env, error, fmt};
 use tokio::runtime::current_thread::Runtime;
+
+/// type definition for response sent from web server
+type ResponseBox = Future<Item = Response<Body>, Error = Error>;
 
 /// Custom error for client utils
 #[derive(Debug, Clone)]
@@ -101,8 +104,10 @@ pub fn get_client(
     Ok(Client::builder().build::<_, Body>(proxy_connector))
 }
 
-pub fn get_http_client()
-  -> Result<Client<ProxyConnector<HttpConnector>, Body>, ClientError> {
+/// Function to get a http and https compatible client to connect to remote URI.
+///
+/// use this if there's no client trust involved
+pub fn get_http_client() -> Result<Client<ProxyConnector<HttpConnector>, Body>, ClientError> {
     let mut http = HttpConnector::new(1);
     // do not enforce http only URI
     http.enforce_http(false);
@@ -144,7 +149,6 @@ pub fn read_response_future(response_fut: ResponseFuture) -> Result<ClientRespon
                         error!("Response status is not successful: {}", response.status());
                         return Err(ClientError);
                     }
-                    info!(" OK RESPONSE ");
                     // Borrow response headers, to be passed in ClientResponse
                     let header_map = response.headers().to_owned();
                     let body = response.into_body();
@@ -195,6 +199,29 @@ pub fn read_body_as_string(body: Body) -> Result<String, ClientError> {
     })
     // Wait for completion of task assigned to then
     .wait()
+}
+
+
+/// Function to construct ```hyper::Response``` for the supplied input parameters.
+/// Accepts http status code and Optional headers, body to be packed in response object.
+///
+/// return: A ```Box<Future<Item=Response<Body>, Error=hyper::Error> + Send>``` object:
+///     Response message to be sent back for the request.
+pub fn send_response(
+    status_code: StatusCode,
+    headers: Option<HeaderMap<HeaderValue>>,
+    body: Option<Body>,
+) -> ResponseBox {
+    // Construct response with empty body, then fill input parameters
+    let mut response = Response::new(Body::empty());
+    *response.status_mut() = status_code;
+    if body.is_some() {
+        *response.body_mut() = body.unwrap();
+    };
+    if headers.is_some() {
+        *response.headers_mut() = headers.unwrap();
+    }
+    future::ok(response)
 }
 
 #[cfg(test)]

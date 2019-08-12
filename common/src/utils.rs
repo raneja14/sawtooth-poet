@@ -17,6 +17,7 @@
 
 use std::fs::File;
 use std::io::Read;
+use hex as hex_codec;
 
 /// Utility function to accept file name (with path if present) and return contents of file as
 /// String object. Note that error reading file would panic.
@@ -42,6 +43,16 @@ pub fn read_binary_file(filename: &str) -> Vec<u8> {
     let mut buffer = vec![];
     file.read_to_end(&mut buffer).expect("Read failed!");
     buffer
+}
+
+/// Convert from byte array to hex string
+pub fn to_hex_string(bytes: &[u8]) -> String {
+    hex_codec::encode(bytes)
+}
+
+/// Convert from hex string to byte vector
+pub fn from_hex_string(str: String) -> Vec<u8> {
+    hex_codec::decode(str).expect("Error while decoding hex string.")
 }
 
 #[cfg(test)]

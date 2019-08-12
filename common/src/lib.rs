@@ -23,6 +23,7 @@ extern crate bincode;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_big_array;
+extern crate hex;
 
 pub mod lru_cache;
 pub mod utils;

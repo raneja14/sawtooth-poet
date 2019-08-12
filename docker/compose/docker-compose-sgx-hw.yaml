@@ -75,8 +75,8 @@ services:
       - cargo-registry:/root/.cargo/registry
       - poet-share:/poet_keys
     working_dir: '/project/sawtooth-poet/core'
-    devices:
-      - "/dev/isgx:/dev/isgx"
+    #    devices:
+#      - "/dev/isgx:/dev/isgx"
     depends_on:
       - validator-1
       - validator-registry-tp-1

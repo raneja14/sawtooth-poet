@@ -160,16 +160,10 @@ impl EnclaveConfig {
     /// Initialization if running on SGX hardware. Fill up IAS client object parameters from
     /// config file.
     pub fn initialize_remote_attestation(&mut self, config: &PoetConfig) {
-        if !config.is_simulator_mode(){
-            info!("REMOTE ATTESTATION");
-            self.ias_client.set_ias_url(config.get_ias_url());
-            self.ias_client.set_ias_subscription_key(config.get_ias_subscription_key());
-            
-           // self.ias_client
-             //   .set_spid_cert(read_binary_file(config.get_spid_cert_file().as_str()));
-            //self.ias_client.set_password(config.get_password());
-            self.update_sig_rl();
-        }
+        info!("REMOTE ATTESTATION");
+        self.ias_client.set_ias_url(config.get_ias_url());
+        self.ias_client.set_ias_subscription_key(config.get_ias_subscription_key());
+        self.update_sig_rl();
     }
 
     pub fn create_signup_info(
@@ -198,43 +192,42 @@ impl EnclaveConfig {
         // to be replaced by anti_sybil_id from AVR. Waiting for mock client for simulator be
         // ready.
         info!("{:?}", quote.clone());
-        let mut epid_pseudonym = poet_public_key.clone();
-            let raw_response = self
-                .ias_client
-                .post_verify_attestation(quote.as_ref(), None, Option::from(nonce))
-                .expect("Error getting AVR");
-            // Response body is the AVR or Verification Report
-            let verification_report =
-                read_body_as_string(raw_response.body).expect("Error reading the response body");
-            let signature = raw_response
-                .header_map
-                .get(IAS_REPORT_SIGNATURE)
-                .expect("Error reading IAS signature in response")
-                .to_str()
-                .expect("Error reading IAS signature header value as string")
-                .to_string();
+        let raw_response = self
+            .ias_client
+            .post_verify_attestation(quote.as_ref(), None, Option::from(nonce), pub_key_hash)
+            .expect("Error getting AVR");
+        // Response body is the AVR or Verification Report
+        let verification_report =
+            read_body_as_string(raw_response.body).expect("Error reading the response body");
+        let signature = raw_response
+            .header_map
+            .get(IAS_REPORT_SIGNATURE)
+            .expect("Error reading IAS signature in response")
+            .to_str()
+            .expect("Error reading IAS signature header value as string")
+            .to_string();
 
-            proof_data_struct.set_verification_report(verification_report);
-            proof_data_struct.set_signature(signature);
+        proof_data_struct.set_verification_report(verification_report);
+        proof_data_struct.set_signature(signature);
 
-            // Verify AVR
-            check_verification_report(&proof_data_struct, config)
-                .expect("Invalid attestation report");
-            debug!("Verification successful!");
+        // Verify AVR
+        check_verification_report(&proof_data_struct, config)
+            .expect("Invalid attestation report");
+        debug!("Verification successful!");
 
-            // Fill up signup information from AVR
-            let verification_report_tmp_dict: Value =
-                from_str(proof_data_struct.verification_report.as_str())
-                    .expect("Error deserializing verification report");
-            let verification_report_dict = verification_report_tmp_dict
-                .as_object()
-                .expect("Error reading verification report as hashmap");
-            epid_pseudonym = verification_report_dict
-                .get("epidPseudonym")
-                .expect("No EPID Pseudonym in AVR")
-                .as_str()
-                .expect("Error reading EPID pseudonym as string")
-                .to_string();
+        // Fill up signup information from AVR
+        let verification_report_tmp_dict: Value =
+            from_str(proof_data_struct.verification_report.as_str())
+                .expect("Error deserializing verification report");
+        let verification_report_dict = verification_report_tmp_dict
+            .as_object()
+            .expect("Error reading verification report as hashmap");
+        let epid_pseudonym = verification_report_dict
+            .get("epidPseudonym")
+            .expect("No EPID Pseudonym in AVR")
+            .as_str()
+            .expect("Error reading EPID pseudonym as string")
+            .to_string();
 
         let mut signup_info = SignUpInfo::new();
         signup_info.set_poet_public_key(poet_public_key);
@@ -441,7 +434,7 @@ fn check_verification_report(
     }
     // 6. Includes an EPID psuedonym.
     if !verification_report_dict.contains_key("epidPseudonym") {
-        error!("AVR does not contain an EPID psuedonym");
+        error!("AVR does not contain an EPID pseudonym");
         return Err(());
     }
     // 7. Includes a nonce

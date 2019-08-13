@@ -137,10 +137,15 @@ namespace sawtooth {
             // Initialize a quote
             sgx_target_info_t targetInfo = { 0 };
             sgx_epid_group_id_t gid = { 0 };
+            uint8_t count = 0;
+            sgx_status_t ret;
 
-            sgx_status_t ret = this->CallSgx([&targetInfo, &gid] () {
-                return sgx_init_quote(&targetInfo, &gid);
-            });
+            do {
+               ret = this->CallSgx([&targetInfo, &gid] () {
+                    return sgx_init_quote(&targetInfo, &gid);
+                });
+                printf("Returned %d\n", ret);
+            } while(ret == SGX_ERROR_BUSY && count++ < 20);
             ThrowSgxError(ret, "Failed to initialize enclave quote");
 
             // Now retrieve a fake enclave report so that we can later

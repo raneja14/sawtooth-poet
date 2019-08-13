@@ -94,7 +94,8 @@ services:
         && RUST_BACKTRACE=1 cargo run --bin sawtooth-poet -- \
         -C tcp://validator-1:5050 \
         --config /project/sawtooth-poet/core/src/resources/poet_config.toml \
-        -v --genesis /poet_keys/poet-config.batch \""
+        -v --genesis /poet_keys/poet-config.batch ;\
+        tail -f /dev/null \""
     stop_signal: SIGKILL
 
   rest-api-1:

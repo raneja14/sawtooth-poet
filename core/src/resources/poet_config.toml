@@ -20,7 +20,7 @@
 
 # spid is a 32-digit hex string tied to the enclave implementation
 
-spid = 'DEADBEEF00000000DEADBEEF00000000'
+spid = '9D1FEC1C00D73EE8C97A1E36D5B215F7'
 
 
 # ias_url is the URL of the Intel Attestation Service (IAS) server.  The
@@ -37,7 +37,7 @@ spid_cert_file = '/project/sawtooth-poet/client.pfx'
 # submitted to Intel in order to obtain a SPID	# be obtained by signing up and subscribing to the Attestation Service via
 # the SGX Services portal at: https://api.portal.trustedservices.intel.com
 
-ias_subscription_key = 'ffffffff'
+ias_subscription_key = '39525982ff1a4ae3b1fc1353c9103285'
 
 # password to read the DER-encoded certificate file
 password = ''

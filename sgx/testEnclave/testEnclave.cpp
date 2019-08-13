@@ -53,6 +53,8 @@ int main(int argc, char **argv) {
     sgx_epid_group_id_t gid = { 0 };
     sgx_status_t ret = sgx_init_quote(&targetInfo, &gid);
 
+    printf("Returned is %d\n", ret);
+
     sgx_report_t enclaveReport = { 0 };
     test_ecall_CreateErsatzEnclaveReport(gEnclaveId, &poetError,
 	                                     &targetInfo, &enclaveReport);
@@ -61,6 +63,8 @@ int main(int argc, char **argv) {
     memset(&targetInfo,0,sizeof(targetInfo));
     memset(&gid,0,sizeof(gid));
     ret = sgx_init_quote(&targetInfo, &gid);
+
+    printf("Returned is %d\n", ret);
 
     memset(&enclaveReport,0,sizeof(enclaveReport));
     std::string opk_hash = "ABCD";
@@ -333,7 +337,7 @@ void test_ecall_VerifySignupInfo(sgx_enclave_id_t enclaveId,
 
 void loadEnclave() {
 
-    std::string enclaveFilePath = "libpoet_enclave_sim.signed.so";
+    std::string enclaveFilePath = "libpoet_enclave_hw.signed.so";
     sgx_launch_token_t token = { 0 };
     int flags = SGX_DEBUG_FLAG;
 

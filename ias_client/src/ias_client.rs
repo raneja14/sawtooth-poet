@@ -214,6 +214,7 @@ impl IasClient {
         let req = Request::builder()
         .method("POST")
         .uri(url.clone())
+        .header(header::CONTENT_TYPE, "application/json")
         .header(REQUEST_HEADER_KEY, self.ias_subscription_key.clone())
         .body(Body::from(serde_json::to_string(&request_aep).expect("Error occurred during AEP serialization")))
         .unwrap();

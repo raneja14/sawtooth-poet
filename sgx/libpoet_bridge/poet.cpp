@@ -270,8 +270,10 @@ poet_err_t Poet_GetEnclaveCharacteristics(
         
     } catch (sp::PoetError& e) {
         Poet_SetLastError(e.what());
+        printf("Error occurred %s\n", e.what());
         ret = e.error_code();
     } catch (std::exception& e) {
+        printf("Error occurred %s\n", e.what());
         Poet_SetLastError(e.what());
         ret = POET_ERR_UNKNOWN;
     } catch (...) {

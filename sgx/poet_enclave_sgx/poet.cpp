@@ -66,20 +66,23 @@ Poet::Poet(
             spid.c_str(),
             MyLog
             );          
+        printf("\nIntialization value %x\nIn decimal it is %d\n", ret, ret);
 	
         ThrowPoetError(ret);
         StringBuffer mrEnclaveBuffer(Poet_GetEnclaveMeasurementSize());
         StringBuffer basenameBuffer(Poet_GetEnclaveBasenameSize());
         StringBuffer epidGroupBuffer(Poet_GetEpidGroupSize());
 
-        ThrowPoetError(
-            Poet_GetEnclaveCharacteristics(
+        
+        ret = Poet_GetEnclaveCharacteristics(
                 mrEnclaveBuffer.data(),
                 mrEnclaveBuffer.length,
                 basenameBuffer.data(),
                 basenameBuffer.length,
                 epidGroupBuffer.data(),
-                epidGroupBuffer.length));
+                epidGroupBuffer.length);
+        printf("\nError returned from GetEnclaveCharacteristics %u - %x\n", ret, ret);
+        ThrowPoetError(ret);
 	    this->mr_enclave = mrEnclaveBuffer.str();
         this->basename = basenameBuffer.str();
         this->epid_group = epidGroupBuffer.str();

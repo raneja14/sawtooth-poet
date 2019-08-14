@@ -15,20 +15,55 @@
  * ------------------------------------------------------------------------------
  */
 
-use std::{fmt, error};
+use std::{fmt, error, error::Error};
+use bincode::ErrorKind;
 
 #[derive(Debug)]
-pub struct SgxStructError;
+pub struct SgxStructError{
+    inner: String,
+}
 
 impl std::fmt::Display for SgxStructError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SgxStructError")
+        write!(f, "SgxStructError: {:?}", &self.inner)
+    }
+}
+
+impl From<String> for SgxStructError {
+    fn from(inner: String) -> SgxStructError {
+        SgxStructError {
+            inner,
+        }
+    }
+}
+
+impl From<&'static str> for SgxStructError {
+    fn from(inner: &'static str) -> SgxStructError {
+        SgxStructError {
+            inner: inner.to_string(),
+        }
+    }
+}
+
+impl From<Box<Error>> for SgxStructError {
+    fn from(err: Box<Error>) -> SgxStructError {
+        SgxStructError {
+            inner: format!("{:?}", err),
+        }
+    }
+}
+
+impl From<Box<ErrorKind>> for SgxStructError {
+    fn from(err: Box<ErrorKind>) -> SgxStructError {
+        SgxStructError {
+            inner: format!("{:?}", err),
+        }
     }
 }
 
 impl error::Error for SgxStructError {
     fn description(&self) -> &str {
-        "SgxStructError"
+        &self.inner
     }
 
     fn cause(&self) -> Option<&error::Error> {

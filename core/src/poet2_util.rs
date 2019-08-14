@@ -120,6 +120,13 @@ pub fn write_binary_file(data: &[u8], filename: &str) {
 }
 
 /// Returns SHA256 of input &str in String
+pub fn sha256_from_bytes(input_value: &[u8]) -> String {
+    let mut sha256_calculator = Sha256::new();
+    sha256_calculator.input(input_value);
+    sha256_calculator.result_str()
+}
+
+/// Returns SHA256 of input &str in String
 pub fn sha256_from_str(input_value: &str) -> String {
     let mut sha256_calculator = Sha256::new();
     sha256_calculator.input_str(input_value);

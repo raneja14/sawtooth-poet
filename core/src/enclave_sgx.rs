@@ -74,6 +74,7 @@ impl From<&Block> for WaitCertificate {
         serde_json::from_str(&wait_certificate).unwrap()
     }
 }
+
 #[derive(Clone)]
 pub struct EnclaveConfig {
     pub enclave_id: r_sgx_enclave_id_t,
@@ -190,14 +191,14 @@ impl EnclaveConfig {
         self.signup_info.poet_public_key_len = signup.poet_public_key_len;
         self.signup_info.enclave_quote = signup.enclave_quote;
 
-        let (poet_public_key, quote) = self.get_signup_parameters();
+        let (poet_public_key, quote, _, _) = self.get_signup_parameters();
         let nonce = &sha512_from_str(poet_public_key.as_str())[..MAXIMUM_NONCE_LENGTH];
         let mut proof_data_struct = SignUpInfoProof::new();
         // TODO: Using poet_public_key as a random string for each registration request, this has
         // to be replaced by anti_sybil_id from AVR. Waiting for mock client for simulator be
         // ready.
+        info!("{:?}", quote.clone());
         let mut epid_pseudonym = poet_public_key.clone();
-        if !config.is_simulator_mode() {
             let raw_response = self
                 .ias_client
                 .post_verify_attestation(quote.as_ref(), None, Option::from(nonce))
@@ -234,7 +235,6 @@ impl EnclaveConfig {
                 .as_str()
                 .expect("Error reading EPID pseudonym as string")
                 .to_string();
-        }
 
         let mut signup_info = SignUpInfo::new();
         signup_info.set_poet_public_key(poet_public_key);
@@ -333,19 +333,6 @@ impl EnclaveConfig {
         verify_wait_cert_status
     }
 
-    /// Returns boolean, information if POET is run in hardware or simulator mode.
-    pub fn check_if_sgx_simulator(&mut self) -> bool {
-        // let mut eid: r_sgx_enclave_id_t = self.enclave_id;
-        // let mut sgx_simulator: bool = false;
-        // ffi::is_sgx_simulator(&mut eid, &mut sgx_simulator).expect("Failed to check SGX simulator");
-        // debug!(
-        //     "is_sgx_simulator ? {:?}",
-        //     if sgx_simulator { "Yes" } else { "No" }
-        // );
-        // sgx_simulator
-        return true;
-    }
-
     pub fn set_sig_revocation_list(&mut self, sig_rev_list: &str) {
         let mut eid: r_sgx_enclave_id_t = self.enclave_id;
         ffi::set_sig_revocation_list(&mut eid, sig_rev_list)
@@ -353,13 +340,18 @@ impl EnclaveConfig {
         debug!("Signature revocation list has been updated");
     }
 
-    pub fn get_signup_parameters(&mut self) -> (String, String) {
+    pub fn get_signup_parameters(&mut self) -> (String, String, String, String) {
         let signup_data: r_sgx_signup_info_t = self.signup_info;
         let poet_pub_key =
             unsafe { ffi::create_string_from_char_ptr(signup_data.poet_public_key as *mut c_char) };
         let enclave_quote =
             unsafe { ffi::create_string_from_char_ptr(signup_data.enclave_quote as *mut c_char) };
-        (poet_pub_key, enclave_quote)
+        let enclave_id: r_sgx_enclave_id_t = self.enclave_id;
+        let mr_enclave =
+            unsafe { ffi::create_string_from_char_ptr(enclave_id.mr_enclave as *mut c_char) };
+        let basename =
+            unsafe { ffi::create_string_from_char_ptr(enclave_id.basename as *mut c_char) };
+        (poet_pub_key, enclave_quote, mr_enclave, basename)
     }
 
     /// Method to update signature revocation list received from IAS. Pass it to enclave. Note

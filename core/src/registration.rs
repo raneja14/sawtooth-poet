@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Intel Corporation
+ Copyright 2019 Intel Corporation
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ use hyper::{header, header::HeaderValue, Body, Client, Method, Request, Uri};
 use ias_client::client_utils::read_response_future;
 use poet2_util::{
     read_file_as_string_ignore_line_end, sha256_from_str, write_binary_file, sha512_of_bytearray,
+    to_hex_string, sha256_from_bytes,
 };
 use poet_config::PoetConfig;
 use protobuf::{Message, RepeatedField};
@@ -29,11 +30,18 @@ use sawtooth_sdk::{
     },
     signing::{create_context, secp256k1::Secp256k1PrivateKey, PrivateKey, PublicKey, Signer},
 };
-use std::{env, path::Path, str};
-use protos::validator_registry::{
-    ValidatorRegistryPayload, SignUpInfo,
+use std::{env, path::Path, str, iter::repeat};
+use protos::{
+    validator_registry::{
+        ValidatorRegistryPayload, SignUpInfo,
+    },
+    settings::{
+        SettingProposal, SettingsPayload, SettingsPayload_Action,
+    }
 };
+use rand::Rng;
 
+const SETTING_ADDRESS_PART_SIZE: usize = 16;
 const VALIDATOR_REGISTRY: &str = "validator_registry";
 const CONTEXT_ALGORITHM_NAME: &str = "secp256k1";
 const VALIDATOR_REGISTRY_VERSION: &str = "2.0";
@@ -49,6 +57,11 @@ const DEFAULT_POET_CLIENT_PRIVATE_KEY: &str = "/etc/sawtooth/keys/validator.priv
 const APPLICATION_OCTET_STREAM: &str = "application/octet-stream";
 const SETTING_KEY_SEPARATOR: &str = ".";
 const EMPTY_STR: &str = "";
+const SAWTOOTH_POET_VALID_MEASUREMENTS: &str = "sawtooth.poet.valid_enclave_measurements";
+const SAWTOOTH_POET_VALID_BASENAMES: &str = "sawtooth.poet.valid_enclave_basenames";
+const SAWTOOTH_SETTINGS_VOTE_PROPOSALS: &str = "sawtooth.settings.vote.proposals";
+const SAWTOOTH_SETTINGS_VOTE_AUTHORIZED_KEYS: &str = "sawtooth.settings.vote.authorized_keys";
+const SAWTOOTH_SETTINGS_VOTE_APPROVAL_THRESHOLD: &str = "sawtooth.settings.vote.approval_threshold";
 
 /// Function to compose a registration request and send it to validator over REST API (for non
 /// genesis node) or store in a batch file in case of genesis node.
@@ -60,6 +73,8 @@ pub fn do_create_registration(
     config: &PoetConfig,
     nonce: &str,
     signup_info: SignUpInfo,
+    mr_enclave: String,
+    basename: String,
 ) -> BatchList {
     // Read private key from default path if it's not given as input in config
     let mut key_file = config.get_poet_client_private_key_file();
@@ -111,9 +126,13 @@ pub fn do_create_registration(
         vr_entry_address,
         vr_map_address,
         get_address_for_setting("sawtooth.poet.report_public_key_pem"),
-        get_address_for_setting("sawtooth.poet.valid_enclave_measurements"),
-        get_address_for_setting("sawtooth.poet.valid_enclave_basenames"),
+        get_address_for_setting(SAWTOOTH_POET_VALID_MEASUREMENTS),
+        get_address_for_setting(SAWTOOTH_POET_VALID_BASENAMES),
     ];
+
+    warn!("Input addresses are {} and {}",
+        get_address_for_setting(SAWTOOTH_POET_VALID_MEASUREMENTS),
+        get_address_for_setting(SAWTOOTH_POET_VALID_BASENAMES));
 
     // Create transaction header
     let transaction_header = create_transaction_header(
@@ -127,18 +146,94 @@ pub fn do_create_registration(
     // Create transaction
     let transaction = create_transaction(&signer, &transaction_header, payload);
 
+    let created_mr_enclave_batch = create_mr_enclave(&signer, &public_key, mr_enclave);
+    let created_basename_batch = create_basename(&signer, &public_key, basename);
+
     // Create batch header, batch
     let batch = create_batch(&signer, transaction);
 
     // Create batch list
-    create_batch_list(batch)
+    create_batch_list(vec![created_mr_enclave_batch, created_basename_batch, batch])
+}
+
+/// Temporary functions to create settings transactions for enclave measuremenrs and the basename
+fn create_mr_enclave(signer: &Signer, public_key: &Box<PublicKey>, mr_enclave: String) -> Batch {
+    let address = get_address_for_setting(SAWTOOTH_POET_VALID_MEASUREMENTS);
+    let other_address1 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_PROPOSALS);
+    let other_address2 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_AUTHORIZED_KEYS);
+    let other_address3 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_APPROVAL_THRESHOLD);
+    let input_addresses = [address.clone(), other_address1.clone(), other_address2.clone(), other_address3.clone()];
+    let ouput_addresses = [address, other_address2, other_address1, other_address3];
+    let nonce_bytes = rand::thread_rng().gen_iter::<u8>().take(64).collect::<Vec<u8>>();
+    let nonce = to_hex_string(&nonce_bytes);
+    let mut raw_payload = SettingProposal::new();
+    raw_payload.set_setting(SAWTOOTH_POET_VALID_MEASUREMENTS.to_string());
+    raw_payload.set_value(mr_enclave);
+    raw_payload.set_nonce(nonce.clone());
+    let proposal = raw_payload.write_to_bytes().expect("Error serializing the payload");
+    let mut raw_pay = SettingsPayload::new();
+    raw_pay.set_action(SettingsPayload_Action::PROPOSE);
+    raw_pay.set_data(proposal.clone());
+    let payload = raw_pay.write_to_bytes().expect("Error serializing the payload");
+
+    let transaction_header = create_transaction_header_settings(
+        &input_addresses,
+        &ouput_addresses,
+        &payload,
+        public_key,
+        nonce,
+    );
+
+    let transaction = create_transaction(
+        signer,
+        &transaction_header,
+        payload,
+    );
+
+    create_batch(signer, transaction)
+}
+
+fn create_basename(signer: &Signer, public_key: &Box<PublicKey>, basename: String) -> Batch {
+    let address = get_address_for_setting(SAWTOOTH_POET_VALID_BASENAMES);
+    let other_address1 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_PROPOSALS);
+    let other_address2 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_AUTHORIZED_KEYS);
+    let other_address3 = get_address_for_setting(SAWTOOTH_SETTINGS_VOTE_APPROVAL_THRESHOLD);
+    let input_addresses = [address.clone(), other_address1.clone(), other_address2.clone(), other_address3.clone()];
+    let ouput_addresses = [address, other_address2, other_address1, other_address3];
+    let nonce_bytes = rand::thread_rng().gen_iter::<u8>().take(64).collect::<Vec<u8>>();
+    let nonce = to_hex_string(&nonce_bytes);
+    let mut raw_payload = SettingProposal::new();
+    raw_payload.set_setting(SAWTOOTH_POET_VALID_BASENAMES.to_string());
+    raw_payload.set_value(basename);
+    raw_payload.set_nonce(nonce.clone());
+    let proposal = raw_payload.write_to_bytes().expect("Error serializing the payload");
+    let mut raw_pay = SettingsPayload::new();
+    raw_pay.set_action(SettingsPayload_Action::PROPOSE);
+    raw_pay.set_data(proposal.clone());
+    let payload = raw_pay.write_to_bytes().expect("Error serializing the payload");
+
+    let transaction_header = create_transaction_header_settings(
+        &input_addresses,
+        &ouput_addresses,
+        &payload,
+        public_key,
+        nonce,
+    );
+
+    let transaction = create_transaction(
+        signer,
+        &transaction_header,
+        payload,
+    );
+
+    create_batch(signer, transaction)
 }
 
 /// Function to create the ```BatchList``` object, which later is serialized and sent to REST API
 /// Accepts ```Batch``` as a input parameter.
-fn create_batch_list(batch: Batch) -> BatchList {
+fn create_batch_list(batches: Vec<Batch>) -> BatchList {
     // Construct batch list
-    let batches = RepeatedField::from_vec(vec![batch]);
+    let batches = RepeatedField::from_vec(batches);
     let mut batch_list = BatchList::new();
     batch_list.set_batches(batches);
     batch_list
@@ -197,6 +292,29 @@ fn create_transaction(
     transaction
 }
 
+/// Function to construct ```Settings TransactionHeader``` object, accepts parameters required such as
+/// input and output addresses, payload, public key of transactor, nonce to be used.
+fn create_transaction_header_settings(
+    input_addresses: &[String],
+    output_addresses: &[String],
+    payload: &[u8],
+    public_key: &Box<PublicKey>,
+    nonce: String,
+) -> TransactionHeader {
+    // Construct transaction header
+    let mut transaction_header = TransactionHeader::new();
+    transaction_header.set_family_name("sawtooth_settings".to_string());
+    transaction_header.set_family_version("1.0".to_string());
+    transaction_header.set_nonce(nonce);
+    transaction_header.set_payload_sha512(sha512_of_bytearray(payload));
+    transaction_header.set_signer_public_key(public_key.as_hex());
+    transaction_header.set_batcher_public_key(public_key.as_hex());
+    transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));
+    transaction_header.set_outputs(RepeatedField::from_vec(output_addresses.to_vec()));
+    transaction_header.clear_dependencies();
+    transaction_header
+}
+
 /// Function to construct ```TransactionHeader``` object, accepts parameters required such as
 /// input and output addresses, payload, public key of transactor, nonce to be used.
 fn create_transaction_header(
@@ -232,31 +350,23 @@ fn create_transaction_header(
 /// Returns:
 ///     String: the computed address
 fn get_address_for_setting(setting: &str) -> String {
-    // Get parts of settings key
-    let setting_parts: Vec<&str> = setting
-        .splitn(MAX_SETTINGS_PARTS, SETTING_KEY_SEPARATOR)
-        .collect();
+    let mut address = String::new();
+    address.push_str(CONFIGSPACE_NAMESPACE);
+    address.push_str(
+        &setting.splitn(MAX_SETTINGS_PARTS, '.')
+            .chain(repeat(""))
+            .map(config_short_hash)
+            .take(MAX_SETTINGS_PARTS)
+            .collect::<Vec<_>>()
+            .join(""),
+    );
 
-    // If settings key has less than maximum parts, then append empty string hash
-    let number_of_empty_parts_required = MAX_SETTINGS_PARTS - setting_parts.len();
+    address
+}
 
-    // Compute final hash to be returned
-    let mut final_hash: String = String::new();
-
-    // append 16*4 = 64 address with config state namespace
-    final_hash.push_str(CONFIGSPACE_NAMESPACE);
-    for setting_part in setting_parts {
-        let setting_part_hash = &sha256_from_str(setting_part)[..SETTINGS_PART_LENGTH];
-        final_hash.push_str(setting_part_hash);
-    }
-
-    // for final parts, compute empty string hash
-    let empty_string_hash = &sha256_from_str(EMPTY_STR)[..SETTINGS_PART_LENGTH];
-    let empty_string_to_add = empty_string_hash.repeat(number_of_empty_parts_required);
-    final_hash.push_str(empty_string_to_add.as_str());
-
-    // Return the final computed hash for the settings key
-    final_hash
+fn config_short_hash(input_str: &str) -> String {
+    let hash = sha256_from_bytes(input_str.as_bytes());
+    hash[0..SETTING_ADDRESS_PART_SIZE].to_string()
 }
 
 /// Sends the BatchList to the REST API

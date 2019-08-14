@@ -44,7 +44,7 @@ pub fn serialize_to_bytes<T: Serialize>(
     let configuration = endianness.get_config();
     match configuration.serialize(sgx_struct_data) {
         Ok(result) => Ok(result),
-        Err(_) => Err(SgxStructError),
+        Err(err) => Err(SgxStructError::from(err)),
     }
 }
 
@@ -55,6 +55,6 @@ pub fn parse_from_bytes<'a, T: Deserialize<'a>>(
     let configuration = endianness.get_config();
     match configuration.deserialize(raw_buffer) {
         Ok(data) => Ok(data),
-        Err(_) => Err(SgxStructError),
+        Err(err) => Err(SgxStructError::from(err)),
     }
 }

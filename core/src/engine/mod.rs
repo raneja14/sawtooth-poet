@@ -74,14 +74,14 @@ impl Poet2Engine {
 
         // Generate nonce, PoET public key is unique every time enclave is initialized. Take hash
         // of it upto maximum nonce length for nonce.
-        let (poet_public_key, _) = enclave.get_signup_parameters();
+        let (poet_public_key, _, mr_enclave, basename) = enclave.get_signup_parameters();
         let nonce = &poet2_util::sha512_from_str(poet_public_key.as_str())[..MAXIMUM_NONCE_LENGTH];
 
         // Send signup information to validator registry TP
         // It does send registration request to rest-api if not a genesis node
         // In case of genesis node, creates a batch file in the specified location, defaulting to
         // current working directory from where PoET engine is run.
-        let batch_list = do_create_registration(config, nonce, signup_info);
+        let batch_list = do_create_registration(config, nonce, signup_info, mr_enclave, basename);
 
         // Call the batches REST API with composed payload bytes to be sent
         if config.is_genesis() {
@@ -136,7 +136,7 @@ impl Engine for Poet2Engine {
         // The time keeper variable which martks the start of timer
         let mut start = Instant::now();
 
-        let (poet_pub_key, enclave_quote) = service.enclave.get_signup_parameters();
+        let (poet_pub_key, enclave_quote, _, _) = service.enclave.get_signup_parameters();
 
         debug!(
             "Signup info parameters: poet_pub_key = {}, enclave_quote = {}",

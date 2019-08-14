@@ -67,41 +67,6 @@ fn main() {
         },
     })
     .expect("Error generating rust files from validator registry protos");
-
-    println!("Check if building for SGX hardware mode");
-    let sgx_hw_mode = match env::var("SGX_HW_MODE") {
-        Ok(hardware_mode) => {
-            if hardware_mode == "TRUE" {
-                true
-            } else {
-                false
-            }
-        }
-        Err(_) => false,
-    };
-
-    // Generate verifier module based on sgx_hw_mode information.
-    let mut manifest_path =
-        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("Cargo manifest directory not set"));
-    manifest_path.push("src");
-    let mut source = manifest_path.clone();
-    let mut destination = manifest_path;
-    destination.push("validator_registry_tp_verifier.rs");
-    if sgx_hw_mode {
-        println!("Validator registry TP will compile to work in SGX hardware mode");
-        source.push("sgx");
-    } else {
-        println!("Validator registry TP will compile to work in simulator mode");
-        source.push("simulator");
-    }
-    source.push("validator_registry_tp_verifier.rs");
-    println!(
-        "Copying from {:?} to {:?}",
-        source.clone(),
-        destination.clone()
-    );
-    fs::copy(source, destination)
-        .expect("Build will fail, because copy operation not permitted in the path!");
 }
 
 fn glob_simple(pattern: &str) -> Vec<String> {

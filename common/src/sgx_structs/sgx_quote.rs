@@ -20,7 +20,7 @@ use sgx_structs::{SgxStruct, sgx_struct_error::SgxStructError,
 use sgx_structs::sgx_basename::SgxBasename;
 use sgx_structs::sgx_report_body::SgxReportBody;
 
-const STRUCT_SIZE: usize = 432;
+const FIXED_STRUCT_SIZE: usize = 432;
 const EPID_GROUP_ID_SIZE: usize = 4;
 const DEFAULT_VALUE: u8 = 0;
 const DEFAULT_VALUE_U16: u16 = 0;
@@ -56,8 +56,13 @@ pub struct SgxQuote {
     extended_epid_group_id: u32,
     pub basename: SgxBasename,
     pub report_body: SgxReportBody,
-    signature_len: u32,
-    signature: u8,
+    // Note that signature is a optional parameter, there are cases
+    // where it's not sent. Current version of code does not consider
+    // to serialize or deserialize.
+    // #[serde(default)]
+    // signature_len: Option<u32>,
+    // #[serde(default)]
+    // signature: Option<Vec<u8>>,
 }
 
 impl SgxStruct for SgxQuote {
@@ -72,8 +77,6 @@ impl SgxStruct for SgxQuote {
             extended_epid_group_id: DEFAULT_VALUE_U32,
             basename: SgxBasename::default(),
             report_body: SgxReportBody::default(),
-            signature_len: DEFAULT_VALUE_U32,
-            signature: DEFAULT_VALUE,
         }
     }
 
@@ -85,10 +88,49 @@ impl SgxStruct for SgxQuote {
 
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
-        let _: SgxQuote = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
+        let _: SgxQuote = match parse_from_bytes(&ENDIANNESS, &raw_buffer[..FIXED_STRUCT_SIZE]) {
             Ok(quote) => quote,
             Err(err) => return Err(err),
         };
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_from_bytes() {
+        let mut sgx_quote = SgxQuote::default();
+        let raw_bytes = vec![2, 0, 1, 0, 217, 10, 0, 0, 7, 0, 6, 0, 0, 0, 0, 0, 157, 31, 236, 28, 0, 215, 62, 232, 201, 122, 30, 54, 213, 178, 21, 247, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 255, 255, 255, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 254, 232, 65, 89, 16, 105, 8, 247, 179, 67, 74, 145, 183, 176, 27, 191, 34, 57, 109, 237, 140, 104, 45, 70, 54, 202, 6, 4, 242, 229, 180, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 131, 215, 25, 231, 125, 234, 202, 20, 112, 246, 186, 246, 42, 77, 119, 67, 3, 200, 153, 219, 105, 2, 15, 156, 112, 238, 29, 252, 8, 199, 206, 158, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 231, 144, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 252, 179, 234, 139, 7, 160, 133, 198, 185, 19, 90, 154, 172, 86, 108, 10, 27, 119, 179, 66, 46, 122, 202, 224, 125, 52, 45, 203, 28, 216, 216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        match sgx_quote.parse_from_bytes(&raw_bytes) {
+            Ok(_) => assert!(true),
+            Err(err) => {
+                println!("{}", format!("{:?}", err));
+                assert!(false);
+            },
+        }
+    }
+
+    #[test]
+    fn test_serialize_to_bytes() {
+        let sgx_quote = SgxQuote::default();
+        let bytes = sgx_quote.serialize_to_bytes();
+        match bytes {
+            Ok(result) => {
+                let mut sgx_second = SgxQuote::default();
+                match sgx_second.parse_from_bytes(&result) {
+                    Err(err) => {
+                        println!("{}", format!("{:?}", err));
+                        assert!(false);
+                    },
+                    Ok(_) => assert!(true),
+                };
+            },
+            Err(err) => {
+                assert!(false);
+            },
+        }
     }
 }

@@ -129,30 +129,33 @@ impl TransactionHandler for ValidatorRegistryTransactionHandler {
 
         let result = verify_signup_info(context, &txn_public_key_hash, &val_reg_payload);
 
-        if result.is_ok() {
-            let mut validator_info = ValidatorInfo::new();
-            validator_info.set_name(val_reg_payload.get_name().to_string());
-            validator_info.set_id(val_reg_payload.get_id().to_string());
-            validator_info.set_signup_info(val_reg_payload.get_signup_info().clone());
-            validator_info.set_transaction_id(request.signature.clone());
+        match result {
+            Ok(_) => {
+                let mut validator_info = ValidatorInfo::new();
+                validator_info.set_name(val_reg_payload.get_name().to_string());
+                validator_info.set_id(val_reg_payload.get_id().to_string());
+                validator_info.set_signup_info(val_reg_payload.get_signup_info().clone());
+                validator_info.set_transaction_id(request.signature.clone());
 
-            if self
-                .update_validator_state(
-                    context,
-                    &val_reg_payload.id,
-                    &val_reg_payload.get_signup_info().anti_sybil_id,
-                    &validator_info,
-                )
-                .is_err()
-            {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Could not update validator state",
-                )));
-            }
-        } else {
-            return Err(ApplyError::InvalidTransaction(String::from(
-                "Invalid Signup Info",
-            )));
+                if self
+                    .update_validator_state(
+                        context,
+                        &val_reg_payload.id,
+                        &val_reg_payload.get_signup_info().anti_sybil_id,
+                        &validator_info,
+                    )
+                    .is_err()
+                {
+                    return Err(ApplyError::InvalidTransaction(String::from(
+                        "Could not update validator state",
+                    )));
+                }
+            },
+            Err(err) => {
+                return Err(ApplyError::InvalidTransaction(
+                    format!("Invalid Signup Info {:?}", err),
+                ));
+            },
         }
 
         Ok(())

@@ -194,7 +194,7 @@ impl EnclaveConfig {
         info!("{:?}", quote.clone());
         let raw_response = self
             .ias_client
-            .post_verify_attestation(quote.as_ref(), None, Option::from(nonce), Some(pub_key_hash))
+            .post_verify_attestation(&quote, None, Option::from(nonce), Some(pub_key_hash))
             .expect("Error getting AVR");
         // Response body is the AVR or Verification Report
         let verification_report =

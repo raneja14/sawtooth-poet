@@ -69,7 +69,7 @@ const REPORT_PRIVATE_KEY_PEM: &str =
     -----END PRIVATE KEY-----";
 
 pub fn get_avr(
-    quote: &[u8],
+    quote: &str,
     nonce: &str,
     originator_pub_key: &str
 ) -> Result<(String, String), ()> {
@@ -86,8 +86,12 @@ pub fn get_avr(
     let id_bytes = rand::thread_rng().gen_iter::<u8>().take(64).collect::<Vec<u8>>();
     let id = base64::encode(&id_bytes);
 
+    info!("Enclave quote before the base64 encoding is {:?}", quote);
+
     // Generate enclave body quote
-    let enclave_quote = base64::encode(quote);
+    let enclave_quote = quote.to_string(); // base64::encode(quote);
+
+    info!("Enclave quote after the base64 encoding is {:?}", enclave_quote.clone());
 
     let timestamp = Utc::now();
 

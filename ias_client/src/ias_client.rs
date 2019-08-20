@@ -194,7 +194,7 @@ impl IasClient {
     ///         response body (aka, AVR) using the report key.
     pub fn post_verify_attestation(
         &self,
-        quote: &[u8],
+        quote: &str,
         manifest: Option<&str>,
         nonce: Option<&str>,
         originator_public_key: Option<&str>,
@@ -216,7 +216,7 @@ impl IasClient {
     ///         response body (aka, AVR) using the report key.
     fn post_aep_request(
         &self,
-        quote: &[u8],
+        quote: &str,
         manifest: Option<&str>,
         nonce: Option<&str>,
     ) -> Result<ClientResponse, ClientError> {
@@ -239,9 +239,7 @@ impl IasClient {
         let mut request_aep: HashMap<String, String> = HashMap::new();
         request_aep.insert(
             String::from(ISV_ENCLAVE_QUOTE),
-            str::from_utf8(quote)
-                .expect("Error occurred when converting quote to string")
-                .to_owned(),
+            quote.to_string(),
         );
         // Optional manifest, add to request param if present
         if manifest.is_some() {
@@ -284,7 +282,7 @@ impl IasClient {
     ///         response body (aka, AVR) using the report key.
     fn simulate_aep_request(
         &self,
-        quote: &[u8],
+        quote: &str,
         manifest: Option<&str>,
         nonce: Option<&str>,
         originator_pub_key: &str,

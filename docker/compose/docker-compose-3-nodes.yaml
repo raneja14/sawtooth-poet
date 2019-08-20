@@ -31,6 +31,7 @@ services:
     volumes:
       - ./logs1/validator:/var/log/sawtooth
       - poet-share:/poet_keys
+      - ../../core/src/resources:/config
     # start the validator with an empty genesis batch
     working_dir: /root
     command: "bash -c \"\
@@ -43,8 +44,10 @@ services:
           -k /etc/sawtooth/keys/validator.priv \
           sawtooth.consensus.algorithm.name=PoET \
           sawtooth.consensus.algorithm.version=2.0 \
-          sawtooth.consensus.poet2.block_claim_delay=0 \
-          sawtooth.consensus.poet2.key_block_claim_limit=65536 \
+          sawtooth.consensus.poet.block_claim_delay=0 \
+          sawtooth.consensus.poet.key_block_claim_limit=65536 \
+          sawtooth.poet.report_public_key_pem=\
+          \\\"$$(cat /config/ias_report_key.pem)\\\" \
           -o config.batch && \
         cp /etc/sawtooth/keys/validator.priv /poet_keys/validator-1.priv && \
         cp /etc/sawtooth/keys/validator.pub /poet_keys/validator-1.pub && \
@@ -288,9 +291,9 @@ services:
         - https_proxy
         - no_proxy
     volumes:
-      - ../../families/sawtooth_validator_registry:/project/sawtooth_validator_registry/
+      - ../../:/project
       - cargo-registry-tp:/root/.cargo/registry
-    working_dir: '/project/sawtooth_validator_registry/validator_registry'
+    working_dir: '/project/families/sawtooth_validator_registry/validator_registry'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
@@ -314,9 +317,9 @@ services:
         - https_proxy
         - no_proxy
     volumes:
-      - ../../families/sawtooth_validator_registry:/project/sawtooth_validator_registry/
+      - ../../:/project
       - cargo-registry-tp:/root/.cargo/registry
-    working_dir: '/project/sawtooth_validator_registry/validator_registry'
+    working_dir: '/project/families/sawtooth_validator_registry/validator_registry'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'
@@ -340,9 +343,9 @@ services:
         - https_proxy
         - no_proxy
     volumes:
-      - ../../families/sawtooth_validator_registry:/project/sawtooth_validator_registry/
+      - ../../:/project
       - cargo-registry-tp:/root/.cargo/registry
-    working_dir: '/project/sawtooth_validator_registry/validator_registry'
+    working_dir: '/project/families/sawtooth_validator_registry/validator_registry'
     environment:
       - 'http_proxy=${http_proxy}'
       - 'https_proxy=${https_proxy}'

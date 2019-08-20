@@ -292,7 +292,7 @@ impl IasClient {
         let (verification_report, signature) =
             get_avr(quote, nonce.unwrap(), originator_pub_key).unwrap();
         let mut header_map = HeaderMap::new();
-        header_map.insert(IAS_REPORT_SIGNATURE, HeaderValue::from_str(&signature).unwrap()).unwrap();
+        header_map.insert(IAS_REPORT_SIGNATURE, HeaderValue::from_str(&signature).unwrap());
         Ok(ClientResponse{
             body: Body::from(verification_report),
             header_map,

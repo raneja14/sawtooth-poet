@@ -88,11 +88,21 @@ impl SgxStruct for SgxQuote {
 
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
-        let _: SgxQuote = match parse_from_bytes(&ENDIANNESS, &raw_buffer[..FIXED_STRUCT_SIZE]) {
-            Ok(quote) => quote,
+        match parse_from_bytes(&ENDIANNESS, &raw_buffer[..FIXED_STRUCT_SIZE]) {
+            Ok((version, sign_type, epid_group_id, qe_svn, pce_svn, extended_epid_group_id,
+                   basename, report_body)) => {
+                self.version = version;
+                self.sign_type = sign_type;
+                self.epid_group_id = epid_group_id;
+                self.qe_svn = qe_svn;
+                self.pce_svn = pce_svn;
+                self.extended_epid_group_id = extended_epid_group_id;
+                self.basename = basename;
+                self.report_body = report_body;
+                Ok(())
+            },
             Err(err) => return Err(err),
-        };
-        Ok(())
+        }
     }
 }
 

@@ -37,6 +37,7 @@ rand = "0.4.2"
 base64 = "0.10.0"
 chrono = "^0.4"
 openssl = "0.10.15"
+hex = "0.3.2"
 
 # Following dependencies are required only for test case execution
 [dev-dependencies]

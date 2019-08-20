@@ -15,14 +15,14 @@
 ------------------------------------------------------------------------------
 */
 
-use sgx_structs::{SgxStruct,
-                  sgx_struct_error::SgxStructError,
-                  sgx_struct_serde::{serialize_to_bytes, parse_from_bytes,
-                                     SgxSerdeEndian},
+use sgx_structs::{sgx_attributes::SgxAttributes,
                   sgx_cpu_svn::SgxCpuSvn,
-                  sgx_attributes::SgxAttributes,
                   sgx_measurement::SgxMeasurement,
-                  sgx_report_data::SgxReportData};
+                  sgx_report_data::SgxReportData,
+                  sgx_struct_error::SgxStructError,
+                  sgx_struct_serde::{parse_from_bytes, serialize_to_bytes,
+                                     SgxSerdeEndian},
+                  SgxStruct};
 
 /// const STRUCT_SIZE: usize = 384;
 const RESERVED1: usize = 28;
@@ -32,7 +32,7 @@ const RESERVED4: usize = 60;
 const DEFAULT_VALUE: u8 = 0;
 const ENDIANNESS: SgxSerdeEndian = SgxSerdeEndian::LittleEndian;
 
-big_array!{ BigArray;
+big_array! { BigArray;
     RESERVED3, RESERVED4,
 }
 
@@ -107,10 +107,22 @@ impl SgxStruct for SgxReportBody {
 
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
-        let _: SgxReportBody = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
-            Ok(body) => body,
+        let sgx_report_body: SgxReportBody = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
+            Ok(result) => result,
             Err(err) => return Err(err),
         };
+        self.cpu_svn = sgx_report_body.cpu_svn;
+        self.misc_select = sgx_report_body.misc_select;
+        self.reserved1 = sgx_report_body.reserved1;
+        self.attributes = sgx_report_body.attributes;
+        self.mr_enclave = sgx_report_body.mr_enclave;
+        self.reserved2 = sgx_report_body.reserved2;
+        self.mr_signer = sgx_report_body.mr_signer;
+        self.reserved3 = sgx_report_body.reserved3;
+        self.isv_prod_id = sgx_report_body.isv_prod_id;
+        self.isv_svn = sgx_report_body.isv_svn;
+        self.reserved4 = sgx_report_body.reserved4;
+        self.report_data = sgx_report_body.report_data;
         Ok(())
     }
 }

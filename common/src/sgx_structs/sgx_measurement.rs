@@ -15,8 +15,8 @@
 ------------------------------------------------------------------------------
 */
 
-use sgx_structs::{SgxStruct, sgx_struct_error::SgxStructError,
-                  sgx_struct_serde::{serialize_to_bytes, parse_from_bytes, SgxSerdeEndian}};
+use sgx_structs::{sgx_struct_error::SgxStructError, sgx_struct_serde::{parse_from_bytes, serialize_to_bytes, SgxSerdeEndian},
+                  SgxStruct};
 
 const STRUCT_SIZE: usize = 32;
 const DEFAULT_VALUE: u8 = 0;
@@ -58,20 +58,20 @@ impl SgxStruct for SgxMeasurement {
 
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
-        match parse_from_bytes(&ENDIANNESS, raw_buffer) {
-            Ok(m) => {
-                self.m = m;
-                Ok(())
-            },
-            Err(err) => Err(err),
-        }
+        let sgx_measurement: SgxMeasurement = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
+            Ok(result) => result,
+            Err(err) => return Err(err),
+        };
+        self.m = sgx_measurement.m;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand::Rng;
+
+    use super::*;
 
     #[test]
     fn test_parse_from_bytes() {

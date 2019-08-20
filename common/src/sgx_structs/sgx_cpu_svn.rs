@@ -57,8 +57,8 @@ impl SgxStruct for SgxCpuSvn {
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
         match parse_from_bytes(&ENDIANNESS, raw_buffer) {
-            Ok(result) => {
-                self.svn = result;
+            Ok((svn)) => {
+                self.svn = svn;
                 Ok(())
             },
             Err(err) => Err(err),

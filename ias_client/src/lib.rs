@@ -32,6 +32,7 @@ extern crate rand;
 extern crate base64;
 extern crate chrono;
 extern crate openssl;
+extern crate hex;
 
 // modules defined in this crate
 pub mod client_utils;

@@ -61,10 +61,11 @@ impl SgxStruct for SgxReportData {
 
     /// Parses a byte array and creates the Sgx* object corresponding to the C/C++ struct.
     fn parse_from_bytes(&mut self, raw_buffer: &[u8]) -> Result<(), SgxStructError> {
-        let _: SgxReportData = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
-            Ok(d) => d,
+        let sgx_report_data: SgxReportData = match parse_from_bytes(&ENDIANNESS, raw_buffer) {
+            Ok(sgx_report_data) => sgx_report_data,
             Err(err) => return Err(err),
         };
+        self.d = sgx_report_data.d;
         Ok(())
     }
 }

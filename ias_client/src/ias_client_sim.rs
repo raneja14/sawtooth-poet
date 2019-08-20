@@ -23,6 +23,7 @@ use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::pkey::Private;
 use openssl::sign::Signer;
+use openssl::sha;
 use rand::Rng;
 
 use common::sgx_structs::{sgx_basename::SgxBasename, sgx_measurement::SgxMeasurement, SgxStruct};
@@ -72,7 +73,7 @@ pub fn get_avr(
     nonce: &str,
     originator_pub_key: &str
 ) -> Result<(String, String), ()> {
-    let mut epid_pseudonym_bytes: Vec<u8> = Vec::new();
+    let mut epid_pseudonym_bytes: [u8; 64] = [0; 64];
 
     let mut sha_calculator = Sha256::new();
     sha_calculator.input_str(originator_pub_key);

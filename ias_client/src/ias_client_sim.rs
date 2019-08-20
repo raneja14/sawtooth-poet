@@ -72,7 +72,7 @@ pub fn get_avr(
     nonce: &str,
     originator_pub_key: &str
 ) -> Result<(String, String), ()> {
-    let mut epid_pseudonym_bytes: Vec<u8>;
+    let mut epid_pseudonym_bytes: Vec<u8> = Vec::new();
 
     let mut sha_calculator = Sha256::new();
     sha_calculator.input_str(originator_pub_key);
@@ -91,12 +91,12 @@ pub fn get_avr(
     let timestamp = Utc::now();
 
     let verification_report_json = json!({
-        'epidPseudonym': epid_pseudonym,
-        'id': id,
-        'isvEnclaveQuoteStatus': 'OK',
-        'isvEnclaveQuoteBody': enclave_quote,
-        'nonce': nonce.to_string(),
-        'timestamp': timestamp.to_rfc3339()
+        "epidPseudonym": epid_pseudonym,
+        "id": id,
+        "isvEnclaveQuoteStatus": "OK",
+        "isvEnclaveQuoteBody": enclave_quote,
+        "nonce": nonce.to_string(),
+        "timestamp": timestamp.to_rfc3339()
         });
 
     let verification_report = verification_report_json.to_string();

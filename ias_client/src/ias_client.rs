@@ -178,8 +178,10 @@ impl IasClient {
         api_path: Option<&str>,
     ) -> Result<ClientResponse, ClientError> {
         debug!("Simulating SigRL");
-        let simulated_response = send_response(StatusCode::OK, None, None);
-        read_response_future(simulated_response)
+        Ok(ClientResponse{
+            body: Body::empty(),
+            header_map: HeaderMap::new(),
+        })
     }
 
     /// Post request to send Attestation Enclave Payload and get response having Attestation
@@ -290,14 +292,11 @@ impl IasClient {
         let (verification_report, signature) =
             get_avr(quote, nonce.unwrap(), originator_pub_key).unwrap();
         let mut header_map = HeaderMap::new();
-        header_map.insert(IAS_REPORT_SIGNATURE, HeaderValue::from_str(&signature)).unwrap();
-        let response_fut = send_response(
-            StatusCode::OK,
-            Some(header_map),
-            Some(Body::from(verification_report))
-        );
-        // Create an object of simulator, to respond back
-        read_response_future(response_fut)
+        header_map.insert(IAS_REPORT_SIGNATURE, HeaderValue::from_str(&signature).unwrap()).unwrap();
+        Ok(ClientResponse{
+            body: Body::from(verification_report),
+            header_map,
+        })
     }
 }
 

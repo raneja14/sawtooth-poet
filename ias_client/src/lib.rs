@@ -23,6 +23,7 @@ extern crate hyper;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate serde_json;
 extern crate tokio;
 extern crate common;

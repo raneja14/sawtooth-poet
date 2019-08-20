@@ -25,14 +25,14 @@ use self::native_tls::{Identity, TlsConnector};
 use futures::{future, future::Future, stream::Stream};
 use hyper::{
     client::{HttpConnector, ResponseFuture},
-    header::HeaderMap,
+    header::{HeaderMap, HeaderValue},
     Body, Client, Error, StatusCode, Uri, Response,
 };
 use std::{env, error, fmt};
 use tokio::runtime::current_thread::Runtime;
 
 /// type definition for response sent from web server
-type ResponseBox = Future<Item = Response<Body>, Error = Error>;
+type ResponseBox = Box<Future<Item = Response<Body>, Error = Error> + Send>;
 
 /// Custom error for client utils
 #[derive(Debug, Clone)]
@@ -221,7 +221,7 @@ pub fn send_response(
     if headers.is_some() {
         *response.headers_mut() = headers.unwrap();
     }
-    future::ok(response)
+    Box::new(future::ok(response))
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-# Copyright 2018 Intel Corporation
+# Copyright 2019 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,14 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
-FROM ubuntu:xenial
-RUN echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/ci xenial universe" >> /etc/apt/sources.list \
- && (apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8AA7AF1F1091A5FD \
- || apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 8AA7AF1F1091A5FD) \
+FROM ubuntu:bionic
+
+RUN \
+ apt-get update \
+ && apt-get install -y -q curl gnupg \
+ && (curl -sSL 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x44FC67F19B2466EA' | apt-key add - \
+ || curl -sSL 'p80.pool.sks-keyservers.net/pks/lookup?op=get&search=0x44FC67F19B2466EA' | apt-key add -) \
+ && echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/nightly bionic universe" >> /etc/apt/sources.list \
  && apt-get update \
  && apt-get install -y -q --allow-downgrades \
  build-essential \
@@ -38,27 +42,11 @@ RUN echo "deb [arch=amd64] http://repo.sawtooth.me/ubuntu/ci xenial universe" >>
  make \
  wget \
  pkg-config \
- python3-grpcio-tools=1.1.3-1 \
+ python3-grpcio-tools \
  unzip \
  git \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
-
-RUN \
- if [ ! -z $HTTP_PROXY ] && [ -z $http_proxy ]; then \
-  http_proxy=$HTTP_PROXY; \
- fi; \
- if [ ! -z $HTTPS_PROXY ] && [ -z $https_proxy ]; then \
-  https_proxy=$HTTPS_PROXY; \
- fi; \
- if [ ! -z $http_proxy ]; then \
-  http_proxy_host=$(printf $http_proxy | sed 's|http.*://\(.*\):\(.*\)$|\1|');\
-  http_proxy_port=$(printf $http_proxy | sed 's|http.*://\(.*\):\(.*\)$|\2|');\
-  mkdir -p $HOME/.cargo \
-  && echo "[http]" >> $HOME/.cargo/config \
-  && echo 'proxy = "'$http_proxy_host:$http_proxy_port'"' >> $HOME/.cargo/config \
-  && cat $HOME/.cargo/config; \
- fi;
 
 RUN curl -OLsS https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip \
  && unzip protoc-3.5.1-linux-x86_64.zip -d protoc3 \
@@ -73,9 +61,10 @@ ENV PATH=$PATH:/protoc3/bin:/project/sawtooth-poet/bin:/root/.cargo/bin \
 
 WORKDIR /tmp
 
-RUN bash -c "wget https://download.01.org/intel-sgx/linux-2.3/ubuntu16.04-server/libsgx-enclave-common_2.3.100.46354-1_amd64.deb \
+RUN bash -c " mkdir /etc/init \
+  && wget https://download.01.org/intel-sgx/linux-2.3/ubuntu18.04-server/libsgx-enclave-common_2.3.100.46354-1_amd64.deb \
   && dpkg -i libsgx-enclave-common_2.3.100.46354-1_amd64.deb \
-  && wget https://download.01.org/intel-sgx/linux-2.3/ubuntu16.04-server/sgx_linux_x64_sdk_2.3.100.46354.bin \
-  && chmod +x sgx_linux_x64_sdk_2.3.100.46354.bin  \
+  && wget https://download.01.org/intel-sgx/linux-2.3/ubuntu18.04-server/sgx_linux_x64_sdk_2.3.100.46354.bin \
+  && chmod +x sgx_linux_x64_sdk_2.3.100.46354.bin \
   && echo \"yes\" | ./sgx_linux_x64_sdk_2.3.100.46354.bin \
   && chmod +x ./sgxsdk/environment"

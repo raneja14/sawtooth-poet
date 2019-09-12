@@ -20,8 +20,6 @@
 pub struct PoetConfig {
     spid: String,
     ias_url: String,
-    spid_cert_file: String,
-    password: String,
     rest_api: String,
     ias_report_key_file: String,
     poet_client_private_key_file: String,
@@ -32,7 +30,6 @@ pub struct PoetConfig {
     lib_enclave_path: String,
     lib_poet_bridge_path: String,
     ias_subscription_key: String,
-    is_simulator_mode: bool,
 }
 
 impl PoetConfig {
@@ -43,14 +40,6 @@ impl PoetConfig {
 
     pub fn get_ias_url(&self) -> String {
         self.ias_url.clone()
-    }
-
-    pub fn get_spid_cert_file(&self) -> String {
-        self.spid_cert_file.clone()
-    }
-
-    pub fn get_password(&self) -> String {
-        self.password.clone()
     }
 
     pub fn get_rest_api(&self) -> String {
@@ -99,10 +88,6 @@ impl PoetConfig {
 
     pub fn get_ias_subscription_key(&self) -> String {
         self.ias_subscription_key.clone()
-    }
-
-   pub fn is_simulator_mode(&self) -> bool {
-        self.is_simulator_mode
     }
 
 }
